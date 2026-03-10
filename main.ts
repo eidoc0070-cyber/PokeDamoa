@@ -1,4 +1,4 @@
-// 테스트5
+// 테스트6
 // DOM 요소가 모두 로드된 후 실행
 document.addEventListener('DOMContentLoaded', (): void => {
     // HTMLButtonElement로 타입 단언 (Type Assertion)
