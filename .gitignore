@@ -1,2 +1,14 @@
 node_modules
 dist
+
+# 에디터 관련 설정 (개인마다 다를 수 있음)
+.vscode/
+.idea/
+
+# 운영체제 생성 파일
+.DS_Store
+Thumbs.db
+
+# 환경 변수 (중요 정보 유출 방지)
+.env
+.env.local
