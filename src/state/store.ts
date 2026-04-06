@@ -1,0 +1,44 @@
+/**
+ * 전역 상태 관리를 위한 간단한 Store (Vanilla TS 전용)
+ * 옵저버 패턴을 사용하여 상태 변경 시 리스너(컴포넌트)들을 호출합니다.
+ */
+export class Store<T> {
+  private state: T;
+  private listeners: Set<(state: T) => void> = new Set();
+
+  constructor(initialState: T) {
+    this.state = initialState;
+  }
+
+  getState(): T {
+    return this.state;
+  }
+
+  setState(newState: Partial<T>) {
+    this.state = { ...this.state, ...newState };
+    this.notify();
+  }
+
+  subscribe(listener: (state: T) => void) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener); // 구독 해제 함수 반환
+  }
+
+  private notify() {
+    this.listeners.forEach(listener => listener(this.state));
+  }
+}
+
+// 전역 앱 상태 타입 (다크모드, 커스텀모드, 세대 정보 등)
+export interface AppState {
+  isDarkMode: boolean;
+  isCustomMode: boolean; // 체크 해제: 합법만, 체크: 불가능/수정가능 포함
+  generation: 9 | 'champions'; // 우선 9세대와 Champions 모드만 지원
+}
+
+// 전역 스토어 인스턴스
+export const globalStore = new Store<AppState>({
+  isDarkMode: false,
+  isCustomMode: false,
+  generation: 9,
+});
