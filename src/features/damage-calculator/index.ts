@@ -2,6 +2,7 @@ import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
 import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO, TYPE_MATCHUPS, POKEMON_TYPES } from '../../data/constants.js';
 import type { PokemonType } from '../../data/constants.js';
+import { calculateStat, calculateBaseDamage, calculateDamageRolls, calculateTypeMultiplier } from '../../utils/pokemon-math.js';
 
 export async function renderDamageCalculator(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `
@@ -22,7 +23,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         let atkBase: Record<string, number> = { atk: 100, spa: 100 };
         let atkIv: Record<string, number> = { atk: 31, spa: 31 };
         let atkEv: Record<string, number> = { atk: 0, spa: 0 };
-        let atkNature: 'plus' | 'minus' | 'none' = 'none'; // Simplify: only for the relevant stat
+        let atkNature: Record<string, 'plus' | 'minus' | 'none'> = { atk: 'none', spa: 'none' };
         let atkStatVal = 100;
         let spaStatVal = 100;
         let atkRank = 0;
@@ -37,7 +38,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         let defBase: Record<string, number> = { hp: 100, def: 100, spd: 100 };
         let defIv: Record<string, number> = { hp: 31, def: 31, spd: 31 };
         let defEv: Record<string, number> = { hp: 0, def: 0, spd: 0 };
-        let defNature: 'plus' | 'minus' | 'none' = 'none'; // Simplify
+        let defNature: Record<string, 'plus' | 'minus' | 'none'> = { def: 'none', spd: 'none' };
         let hpVal = 100;
         let defVal = 100;
         let spdVal = 100;
@@ -60,47 +61,41 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         };
 
         const calcHp = (base: number, iv: number, ev: number) => {
-            if (base === 1) return 1;
-            return Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100) + level + 10;
+            return calculateStat(base, iv, ev, level, true);
         };
-        const calcStat = (base: number, iv: number, ev: number, natureMod: number) => {
-            const raw = Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100) + 5;
-            return Math.floor(raw * natureMod);
+        const calcStatVal = (base: number, iv: number, ev: number, nature: 'plus' | 'minus' | 'none') => {
+            const natureMod = nature === 'plus' ? 1.1 : (nature === 'minus' ? 0.9 : 1.0);
+            return calculateStat(base, iv, ev, level, false, natureMod);
         };
 
         const updateAtkStats = () => {
-            atkStatVal = calcStat(atkBase.atk, atkIv.atk, atkEv.atk, moveCategory === 'physical' && atkNature === 'plus' ? 1.1 : (moveCategory === 'physical' && atkNature === 'minus' ? 0.9 : 1.0));
-            spaStatVal = calcStat(atkBase.spa, atkIv.spa, atkEv.spa, moveCategory === 'special' && atkNature === 'plus' ? 1.1 : (moveCategory === 'special' && atkNature === 'minus' ? 0.9 : 1.0));
+            atkStatVal = calcStatVal(atkBase.atk, atkIv.atk, atkEv.atk, atkNature.atk);
+            spaStatVal = calcStatVal(atkBase.spa, atkIv.spa, atkEv.spa, atkNature.spa);
         };
 
         const updateDefStats = () => {
             hpVal = calcHp(defBase.hp, defIv.hp, defEv.hp);
-            defVal = calcStat(defBase.def, defIv.def, defEv.def, moveCategory === 'physical' && defNature === 'plus' ? 1.1 : (moveCategory === 'physical' && defNature === 'minus' ? 0.9 : 1.0));
-            spdVal = calcStat(defBase.spd, defIv.spd, defEv.spd, moveCategory === 'special' && defNature === 'plus' ? 1.1 : (moveCategory === 'special' && defNature === 'minus' ? 0.9 : 1.0));
+            defVal = calcStatVal(defBase.def, defIv.def, defEv.def, defNature.def);
+            spdVal = calcStatVal(defBase.spd, defIv.spd, defEv.spd, defNature.spd);
         };
 
         const calculateDamageRange = () => {
             if (!movePower) return { rolls: [0], pcts: [0], text: '데미지 0' };
 
-            // 1. 공격 스탯 결정
             let rawAtk = moveCategory === 'physical' ? atkStatVal : spaStatVal;
             let currentAtkRank = moveCategory === 'physical' ? atkRank : spaRank;
             let atk = Math.floor(rawAtk * rankMultipliers[currentAtkRank]);
 
-            // 2. 방어 스탯 결정
             let rawDef = moveCategory === 'physical' ? defVal : spdVal;
             let currentDefRank = moveCategory === 'physical' ? defRank : spdRank;
-            // 눈팟 방어력 업, 모래바람 특방 업
             if (weather === 'snow' && moveCategory === 'physical' && defPoke?.types?.includes('ice' as any)) rawDef = Math.floor(rawDef * 1.5);
             if (weather === 'sand' && moveCategory === 'special' && defPoke?.types?.includes('rock' as any)) rawDef = Math.floor(rawDef * 1.5);
 
             let def = Math.floor(rawDef * rankMultipliers[currentDefRank]);
             if (def < 1) def = 1;
 
-            // 3. 베이스 데미지
-            let baseDmg = Math.floor(Math.floor(Math.floor(2 * level / 5 + 2) * movePower * atk / def) / 50) + 2;
+            let baseDmg = calculateBaseDamage(level, movePower, atk, def);
 
-            // 4. 벽, 날씨, 필드 곱연산
             if (screenOn) {
                 baseDmg = Math.floor(baseDmg * 0.5);
             }
@@ -122,20 +117,10 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             if (terrain === 'misty' && moveType === 'dragon') terrainBoost = 0.5;
             baseDmg = Math.floor(baseDmg * terrainBoost);
 
-            // 5. 난수 롤 (16단계)
-            const rolls = [];
-            for (let i = 85; i <= 100; i++) {
-                let dmg = baseDmg;
-                dmg = Math.floor(dmg * i / 100); // 난수
-                dmg = Math.floor(dmg * stabMod); // 자속
-                dmg = Math.floor(dmg * typeMulti); // 상성
-                dmg = Math.floor(dmg * itemMod); // 도구 등
-                rolls.push(dmg);
-            }
+            const rolls = calculateDamageRolls(baseDmg, stabMod, typeMulti, itemMod);
 
             const pcts = rolls.map(r => (r / hpVal) * 100);
 
-            // 타수 판별
             const max = rolls[15] ?? 0;
             const min = rolls[0] ?? 0;
             let text = '';
@@ -157,20 +142,20 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         };
 
         const renderStatRow = (label: string, idPrefix: string, base: number, iv: number, ev: number, statVal: number, rank: number, hasNature = true, natureVal: string = 'none') => `
-            <div style="display:grid; grid-template-columns: 60px 50px 50px 60px 60px 1fr 50px; gap:5px; align-items:center; font-size:0.85em; background:#fff; padding:4px; border-radius:4px; margin-bottom:2px; border:1px solid #eee;">
+            <div style="display:grid; grid-template-columns: 45px 42px 35px 45px 42px 35px 48px; gap:5px; align-items:center; font-size:0.8em; background:#fff; padding:3px; border-radius:4px; margin-bottom:2px; border:1px solid #eee;">
                 <span style="font-weight:bold;">${label}</span>
                 <input type="number" id="${idPrefix}-base" value="${base}" title="종족값" style="width:100%; padding:2px; text-align:center;" />
                 <input type="number" id="${idPrefix}-iv" value="${iv}" title="개체값" min="0" max="31" style="width:100%; padding:2px; text-align:center;" />
                 <input type="number" id="${idPrefix}-ev" value="${ev}" title="노력치" min="0" max="252" step="4" style="width:100%; padding:2px; text-align:center;" />
                 ${hasNature ? `
-                    <select id="${idPrefix}-nature" style="width:100%; padding:2px;">
+                    <select id="${idPrefix}-nature" style="width:100%; padding:2px; font-size:0.85em;">
                         <option value="none" ${natureVal === 'none' ? 'selected' : ''}>-</option>
                         <option value="plus" ${natureVal === 'plus' ? 'selected' : ''}>+</option>
                         <option value="minus" ${natureVal === 'minus' ? 'selected' : ''}>-</option>
                     </select>
                 ` : '<span></span>'}
-                <input type="number" id="${idPrefix}-val" value="${statVal}" title="실수값" style="width:100%; padding:2px; font-weight:bold; color:#d32f2f; text-align:center;" />
                 <input type="number" id="${idPrefix}-rank" value="${rank}" title="랭크" min="-6" max="6" style="width:100%; padding:2px; text-align:center;" />
+                <input type="number" id="${idPrefix}-val" value="${statVal}" title="실수값" style="width:100%; padding:2px; font-weight:bold; color:#d32f2f; text-align:center;" />
             </div>
         `;
 
@@ -184,14 +169,14 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             const typeOptions = POKEMON_TYPES.map(t => `<option value="${t}" ${moveType === t ? 'selected' : ''}>${TYPE_NAMES_KO[t]}</option>`).join('');
 
             container.innerHTML = `
-                <div style="max-width: 1200px; margin: 0 auto;">
+                <div class="damage-calculator-container" style="max-width: 1200px; margin: 0 auto;">
                     <h2 style="margin-top:0;">종합 데미지 계산기 <span style="font-size:0.5em; color:#888;">(9세대 기준 난수/타수 시뮬레이터)</span></h2>
 
-                    <div style="display:flex; flex-wrap:wrap; gap:15px; align-items: stretch;">
+                    <div class="calc-main-row" style="display:flex; flex-wrap:wrap; gap:15px; align-items: stretch;">
 
                         <!-- 좌측: 공격측 -->
-                        <div style="flex:1; min-width:380px; border:2px solid #e53935; border-radius:12px; padding:15px; background:#fffaf9; display:flex; flex-direction:column; gap:12px;">
-                            <h3 style="color:#e53935; margin:0; border-bottom:1px solid #ffcdd2; padding-bottom:8px;">⚔️ 공격 공격수 (Attacker)</h3>
+                        <div class="attacker-panel" style="flex:1; min-width:350px; border:2px solid #e53935; border-radius:12px; padding:10px; background:#fffaf9; display:flex; flex-direction:column; gap:12px; box-sizing:border-box;">
+                            <h3 style="color:#e53935; margin:0; border-bottom:1px solid #ffcdd2; padding-bottom:8px;">⚔️ 공격수 (Attacker)</h3>
                             
                             <div style="display:flex; gap:10px; align-items:center;">
                                 <div style="flex:1; position:relative;">
@@ -201,11 +186,15 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                                 <label style="font-size:0.85em;">Lv. <input type="number" id="level-input" value="${level}" min="1" max="100" style="width:45px;" /></label>
                             </div>
                             
-                            <div style="display:grid; grid-template-columns: 60px 50px 50px 60px 60px 1fr 50px; gap:5px; text-align:center; font-size:0.7em; color:#666; font-weight:bold;">
-                                <span>스탯</span><span>종족</span><span>개체</span><span>노력</span><span>성격</span><span>실수값</span><span>랭크</span>
+                            <div class="stat-table-mobile-scroll" style="overflow-x:auto;">
+                                <div style="min-width:330px;">
+                                    <div style="display:grid; grid-template-columns: 45px 42px 35px 45px 42px 35px 48px; gap:5px; text-align:center; font-size:0.7em; color:#666; font-weight:bold; margin-bottom:5px;">
+                                        <span>스탯</span><span>종족</span><span>개체</span><span>노력</span><span>성격</span><span>랭크</span><span>실수</span>
+                                    </div>
+                                    ${renderStatRow('공격', 'atk-stat', atkBase.atk, atkIv.atk, atkEv.atk, atkStatVal, atkRank, true, atkNature.atk)}
+                                    ${renderStatRow('특공', 'spa-stat', atkBase.spa, atkIv.spa, atkEv.spa, spaStatVal, spaRank, true, atkNature.spa)}
+                                </div>
                             </div>
-                            ${renderStatRow('공격', 'atk-stat', atkBase.atk, atkIv.atk, atkEv.atk, atkStatVal, atkRank, moveCategory === 'physical', atkNature)}
-                            ${renderStatRow('특공', 'spa-stat', atkBase.spa, atkIv.spa, atkEv.spa, spaStatVal, spaRank, moveCategory === 'special', atkNature)}
 
                             <h4 style="margin:5px 0 0 0; font-size:0.9em; color:#333;">사용 기술</h4>
                             <div style="position:relative;">
@@ -256,7 +245,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                         </div>
 
                         <!-- 우측: 방어측 (Defender) -->
-                        <div style="flex:1; min-width:380px; border:2px solid #4caf50; border-radius:12px; padding:15px; background:#f2fdf4; display:flex; flex-direction:column; gap:12px;">
+                        <div class="defender-panel" style="flex:1; min-width:350px; border:2px solid #4caf50; border-radius:12px; padding:10px; background:#f2fdf4; display:flex; flex-direction:column; gap:12px; box-sizing:border-box;">
                             <h3 style="color:#4caf50; margin:0; border-bottom:1px solid #c8e6c9; padding-bottom:8px;">🛡️ 방어 대상 (Defender)</h3>
                             
                             <div style="display:flex; gap:10px;">
@@ -266,12 +255,16 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                                 </div>
                             </div>
 
-                            <div style="display:grid; grid-template-columns: 60px 50px 50px 60px 60px 1fr 50px; gap:5px; text-align:center; font-size:0.7em; color:#666; font-weight:bold;">
-                                <span>스탯</span><span>종족</span><span>개체</span><span>노력</span><span>성격</span><span>실수값</span><span>랭크</span>
+                            <div class="stat-table-mobile-scroll" style="overflow-x:auto;">
+                                <div style="min-width:330px;">
+                                    <div style="display:grid; grid-template-columns: 45px 42px 35px 45px 42px 35px 48px; gap:5px; text-align:center; font-size:0.7em; color:#666; font-weight:bold; margin-bottom:5px;">
+                                        <span>스탯</span><span>종족</span><span>개체</span><span>노력</span><span>성격</span><span>랭크</span><span>실수</span>
+                                    </div>
+                                    ${renderStatRow('HP', 'hp-stat', defBase.hp, defIv.hp, defEv.hp, hpVal, 0, false)}
+                                    ${renderStatRow('방어', 'def-stat', defBase.def, defIv.def, defEv.def, defVal, defRank, true, defNature.def)}
+                                    ${renderStatRow('특방', 'spd-stat', defBase.spd, defIv.spd, defEv.spd, spdVal, spdRank, true, defNature.spd)}
+                                </div>
                             </div>
-                            ${renderStatRow('HP', 'hp-stat', defBase.hp, defIv.hp, defEv.hp, hpVal, 0, false)}
-                            ${renderStatRow('방어', 'def-stat', defBase.def, defIv.def, defEv.def, defVal, defRank, moveCategory === 'physical', defNature)}
-                            ${renderStatRow('특방', 'spd-stat', defBase.spd, defIv.spd, defEv.spd, spdVal, spdRank, moveCategory === 'special', defNature)}
                             
                             <div style="margin-top:10px; background:#fff; padding:8px; border-radius:6px; border:1px solid #e8f5e9;">
                                 <div style="font-size:0.8em; color:#666;">물리 및 특수 내구력 (참고용)</div>
@@ -285,8 +278,8 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                     </div>
 
                     <!-- 아래: 배틀 환경 & 결과 -->
-                    <div style="margin-top:20px; border:2px solid #9c27b0; border-radius:12px; padding:15px; background:#fbf2ff; display:flex; flex-wrap:wrap; gap:20px;">
-                        <div style="flex:1; min-width:300px;">
+                    <div class="calc-env-result-row" style="margin-top:20px; border:2px solid #9c27b0; border-radius:12px; padding:15px; background:#fbf2ff; display:flex; flex-wrap:wrap; gap:20px; box-sizing:border-box;">
+                        <div class="environment-panel" style="flex:1; min-width:300px;">
                             <h3 style="color:#9c27b0; margin:0; border-bottom:1px solid #e1bee7; padding-bottom:8px;">🌍 배틀 환경</h3>
                             
                             <div style="display:flex; gap:10px; margin-top:10px;">
@@ -321,7 +314,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                             </div>
                         </div>
 
-                        <div style="flex:1.5; min-width:320px; background:#fff; border:3px solid #ab47bc; border-radius:12px; padding:20px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center;">
+                        <div class="result-panel" style="flex:1.5; min-width:320px; background:#fff; border:3px solid #ab47bc; border-radius:12px; padding:20px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; box-sizing:border-box;">
                             <div style="font-size:1.6em; font-weight:bold; margin-bottom:10px;">${text}</div>
                             <div style="font-size:0.9em; color:#666;">데미지 (체력비례)</div>
                             <div style="font-size:2.2em; font-weight:bold; color:#333;">${minPct.toFixed(1)}% ~ ${maxPct.toFixed(1)}%</div>
@@ -385,14 +378,14 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             bindInput('atk-stat-base', v => atkBase.atk = v);
             bindInput('atk-stat-iv', v => atkIv.atk = v);
             bindInput('atk-stat-ev', v => atkEv.atk = v);
-            bindSelect('atk-stat-nature', v => atkNature = v);
+            bindSelect('atk-stat-nature', v => atkNature.atk = v);
             bindInput('atk-stat-val', v => { atkStatVal = v; renderUI(); });
             bindInput('atk-stat-rank', v => atkRank = v);
 
             bindInput('spa-stat-base', v => atkBase.spa = v);
             bindInput('spa-stat-iv', v => atkIv.spa = v);
             bindInput('spa-stat-ev', v => atkEv.spa = v);
-            bindSelect('spa-stat-nature', v => atkNature = v);
+            bindSelect('spa-stat-nature', v => atkNature.spa = v);
             bindInput('spa-stat-val', v => { spaStatVal = v; renderUI(); });
             bindInput('spa-stat-rank', v => spaRank = v);
 
@@ -405,14 +398,14 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             bindInput('def-stat-base', v => defBase.def = v);
             bindInput('def-stat-iv', v => defIv.def = v);
             bindInput('def-stat-ev', v => defEv.def = v);
-            bindSelect('def-stat-nature', v => defNature = v);
+            bindSelect('def-stat-nature', v => defNature.def = v);
             bindInput('def-stat-val', v => { defVal = v; renderUI(); });
             bindInput('def-stat-rank', v => defRank = v);
 
             bindInput('spd-stat-base', v => defBase.spd = v);
             bindInput('spd-stat-iv', v => defIv.spd = v);
             bindInput('spd-stat-ev', v => defEv.spd = v);
-            bindSelect('spd-stat-nature', v => defNature = v);
+            bindSelect('spd-stat-nature', v => defNature.spd = v);
             bindInput('spd-stat-val', v => { spdVal = v; renderUI(); });
             bindInput('spd-stat-rank', v => spdRank = v);
 
@@ -434,8 +427,8 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                     atkDrop.style.display = 'none';
                     if (atkPoke) {
                         atkBase = { atk: atkPoke.stats.atk, spa: atkPoke.stats.spa };
-                        atkEv = { atk: 252, spa: 0 }; // Default to max
-                        atkNature = 'plus';
+                        atkEv = { atk: 252, spa: 0 };
+                        atkNature = { atk: 'plus', spa: 'none' };
                         updateAtkStats();
                     }
                     renderUI();

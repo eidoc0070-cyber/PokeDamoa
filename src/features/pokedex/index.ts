@@ -43,8 +43,9 @@ export async function renderPokedex(container: HTMLElement): Promise<() => void>
                 border-radius: 4px;
                 font-size: 0.75em;
                 color: #fff;
-                margin: 2px;
+                margin: 0;
                 text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+                white-space: nowrap;
             }
         </style>
     `;
@@ -152,12 +153,14 @@ export async function renderPokedex(container: HTMLElement): Promise<() => void>
 
         const createCardHTML = (p: PokemonData) => {
             return `
-                <div class="poke-card" data-poke-id="${p.id}">
-                    <div style="font-size: 0.8em; color: #888; text-align: left; font-weight: bold;">#${String(p.speciesId).padStart(3, '0')}</div>
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" alt="${p.nameKo}" loading="lazy" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWxsPSIjZWVlIi8+PHRleHQgeD0iNDgiIHk9IjUyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk5OSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+'" />
-                    <div style="font-weight: bold; margin-bottom: 5px;">${p.nameKo}</div>
-                    <div>
-                        ${p.types.map(t => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}">${TYPE_NAMES_KO[t] || t}</span>`).join('')}
+                <div class="poke-card" data-poke-id="${p.id}" style="text-align: left; padding: 12px;">
+                    <div style="font-size: 0.8em; color: #888; font-weight: bold;">#${String(p.speciesId).padStart(3, '0')}</div>
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" alt="${p.nameKo}" loading="lazy" style="width: 96px; height: 96px; image-rendering: pixelated; display: block; margin: 0 0 -8px -10px;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWxsPSIjZWVlIi8+PHRleHQgeD0iNDgiIHk9IjUyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk5OSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+'" />
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="font-weight: bold; font-size: 0.95rem; white-space: nowrap;">${p.nameKo}</span>
+                        <div style="display: flex; gap: 2px;">
+                            ${p.types.map(t => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}; font-size: 0.7rem; padding: 1px 5px;">${TYPE_NAMES_KO[t] || t}</span>`).join('')}
+                        </div>
                     </div>
                 </div>
             `;

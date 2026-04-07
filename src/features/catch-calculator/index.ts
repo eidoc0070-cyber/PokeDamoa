@@ -51,7 +51,7 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
             });
 
             container.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:20px;">
+                <div class="catch-calculator-container" style="display:flex; flex-direction:column; gap:20px;">
                     <div>
                         <h2 style="margin-top:0;">포획률 계산기</h2>
                         <p style="color:#666; font-size:0.9em; margin-bottom:20px;">포켓몬의 남은 체력, 상태이상, 볼 종류에 따른 포획 확률을 계산합니다.</p>
@@ -71,21 +71,18 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
                                 </div>
 
                                 <div style="margin-bottom: 20px;">
-                                    <label style="display:block; font-weight:bold; margin-bottom:5px;">남은 체력: <span id="hp-percent-display">${currentHpPercent}%</span></label>
-                                    <input type="range" id="hp-percent-range" min="1" max="100" value="${currentHpPercent}" style="width: 100%;" />
-                                    <div style="display:flex; gap:10px; margin-top:10px;">
-                                        <button class="hp-quick-btn" data-val="100" style="padding:5px 10px; cursor:pointer;">100%</button>
-                                        <button class="hp-quick-btn" data-val="50" style="padding:5px 10px; cursor:pointer;">50%</button>
-                                        <button class="hp-quick-btn" data-val="10" style="padding:5px 10px; cursor:pointer;">10%</button>
-                                        <button class="hp-quick-btn" data-val="1" style="padding:5px 10px; cursor:pointer;">1% (칼등치기)</button>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                        <label style="font-weight:bold;">남은 체력 (%)</label>
+                                        <input type="number" id="hp-percent-input" value="${currentHpPercent}" min="1" max="100" style="width: 60px; padding: 4px; text-align:center; border: 1px solid #ccc; border-radius: 4px;" />
                                     </div>
+                                    <input type="range" id="hp-percent-range" min="1" max="100" value="${currentHpPercent}" style="width: 100%;" />
                                 </div>
                             </div>
 
                             <div style="flex: 1; min-width: 300px; background:rgba(0,0,0,0.02); padding:20px; border-radius:12px; border: 1px dashed #ccc;">
                                 <div style="margin-bottom: 20px;">
                                     <label style="display:block; font-weight:bold; margin-bottom:10px;">상태 이상 (Status)</label>
-                                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                                    <div class="status-options-container" style="display:flex; flex-wrap:wrap; gap:10px;">
                                         <label style="padding:8px 12px; border:1px solid #ccc; border-radius:20px; cursor:pointer; background:${statusBonus === 1.0 ? '#eee' : '#fff'};">
                                             <input type="radio" name="status-bonus" value="1.0" ${statusBonus === 1.0 ? 'checked' : ''} style="display:none;" /> 없음 (1.0x)
                                         </label>
@@ -118,7 +115,7 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
 
                         <div style="margin-top:40px; text-align:center; padding:30px; background:#f8f9fa; border-radius:16px; border:2px solid #ed1c24;">
                             <h3 style="margin:0; color:#666;">예상 포획 확률</h3>
-                            <div style="font-size: 3.5rem; font-weight:bold; color:#ed1c24; margin:10px 0;">
+                            <div class="catch-chance-value" style="font-size: 3.5rem; font-weight:bold; color:#ed1c24; margin:10px 0;">
                                 ${chance >= 100 ? '100%' : chance.toFixed(2) + '%'}
                             </div>
                             <div style="display:flex; justify-content:center; gap:10px;">
@@ -141,6 +138,7 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
             const dropdown = container.querySelector('#poke-dropdown') as HTMLDivElement;
             const captureRateInput = container.querySelector('#capture-rate-input') as HTMLInputElement;
             const hpRange = container.querySelector('#hp-percent-range') as HTMLInputElement;
+            const hpInput = container.querySelector('#hp-percent-input') as HTMLInputElement;
             const ballSelect = container.querySelector('#ball-select') as HTMLSelectElement;
 
             searchInput.addEventListener('input', () => {
@@ -178,16 +176,27 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
 
             hpRange.addEventListener('input', (e) => {
                 currentHpPercent = parseInt((e.target as HTMLInputElement).value);
-                container.querySelector('#hp-percent-display')!.textContent = `${currentHpPercent}%`;
-                // 렌더 전체를 다시 하진 않고 값만 계산해서 결과창만 업데이트할 수도 있지만, 일관성을 위해 renderUI 호출
+                hpInput.value = currentHpPercent.toString();
+                
+                // UI 전체를 리렌더링하지 않고 값만 업데이트 (부드러운 드래깅을 위해)
+                const chance = calculateCatchChance();
+                const chanceEl = container.querySelector('.catch-chance-value');
+                if (chanceEl) {
+                    chanceEl.textContent = chance >= 100 ? '100%' : chance.toFixed(2) + '%';
+                }
+            });
+
+            hpRange.addEventListener('change', () => {
+                // 드래그가 끝났을 때 URL 파라미터 동기화 등을 위해 최종 렌더링
                 renderUI();
             });
 
-            container.querySelectorAll('.hp-quick-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    currentHpPercent = parseInt(btn.getAttribute('data-val') || '100');
-                    renderUI();
-                });
+            hpInput.addEventListener('change', (e) => {
+                let val = parseInt((e.target as HTMLInputElement).value) || 1;
+                if (val > 100) val = 100;
+                if (val < 1) val = 1;
+                currentHpPercent = val;
+                renderUI();
             });
 
             container.querySelectorAll('input[name="status-bonus"]').forEach(radio => {

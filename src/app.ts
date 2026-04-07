@@ -27,8 +27,11 @@ export function initApp(container: HTMLElement) {
   // 2. 기본 레이아웃 골격 생성
   container.innerHTML = `
     <div class="app-container" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
-      <header id="main-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="margin: 0; cursor:pointer;" id="site-logo">PokéDamoa</h1>
+      <header id="main-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px; position: relative;">
+        <div style="display:flex; align-items:center; gap:15px;">
+          <button id="hamburger-menu-btn" class="mobile-only" style="background:none; border:none; font-size:1.8rem; cursor:pointer; padding:0; display:none;">☰</button>
+          <h1 style="margin: 0; cursor:pointer;" id="site-logo">PokéDamoa</h1>
+        </div>
         <div class="header-buttons" style="display:flex; gap:10px;">
             <button id="btn-save" style="padding:5px 12px; cursor:pointer; background:#4caf50; color:#fff; border:none; border-radius:4px;">저장</button>
             <button id="btn-copy-url" style="padding:5px 12px; cursor:pointer; background:#2196f3; color:#fff; border:none; border-radius:4px;">URL 복사</button>
@@ -129,11 +132,23 @@ export function initApp(container: HTMLElement) {
 
   // 탭 버튼 클릭 이벤트
   const tabs = container.querySelectorAll<HTMLButtonElement>('#tab-menu button');
+  const tabMenu = container.querySelector('#tab-menu') as HTMLElement;
+  const hamburgerBtn = container.querySelector('#hamburger-menu-btn') as HTMLElement;
+
   tabs.forEach(btn => {
     btn.addEventListener('click', () => {
       const tabName = btn.getAttribute('data-tab');
       if (tabName) navigateTo(tabName);
+      // 모바일에서 탭 선택 후 메뉴 닫기
+      if (window.innerWidth <= 768) {
+          tabMenu.classList.remove('open');
+      }
     });
+  });
+
+  // 햄버거 버튼 토글
+  hamburgerBtn?.addEventListener('click', () => {
+    tabMenu.classList.toggle('open');
   });
 
   // 로고 클릭 시 설정 탭으로

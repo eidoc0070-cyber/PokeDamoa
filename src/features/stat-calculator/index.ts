@@ -1,6 +1,7 @@
 import { fetchPokedexData } from '../../data/pokeapi.js';
 import type { PokemonData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
+import { calculateStat } from '../../utils/pokemon-math.js';
 
 const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
 type StatKey = typeof STAT_KEYS[number];
@@ -36,17 +37,13 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             const iv = ivs[key];
             const ev = evs[key];
             
-            if (key === 'hp') {
-                if (base === 1) return 1; // 껍질몬 등 특수 케이스 대응 가능하게 (기본 1이면 1 고정은 아니지만 여기선 단순화)
-                return Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100) + level + 10;
-            } else {
-                let modifier = 1.0;
-                if (naturePlus === key && natureMinus !== key) modifier = 1.1;
-                if (natureMinus === key && naturePlus !== key) modifier = 0.9;
-                
-                const preObj = Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100) + 5;
-                return Math.floor(preObj * modifier);
+            let natureMod = 1.0;
+            if (key !== 'hp') {
+                if (naturePlus === key && natureMinus !== key) natureMod = 1.1;
+                if (natureMinus === key && naturePlus !== key) natureMod = 0.9;
             }
+            
+            return calculateStat(base, iv, ev, level, key === 'hp', natureMod);
         };
 
         const renderUI = () => {
@@ -87,16 +84,24 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                             <h3 style="margin:0;">능력치 (상세 조절)</h3>
                             <span style="font-size:0.9em; font-weight:bold; color: ${evTotal > 510 ? 'red' : '#333'};">노력치 총합: ${evTotal} / 510</span>
                         </div>
-                        <div style="overflow-x:auto;">
-                            <table style="width:100%; border-collapse: collapse; text-align:center; min-width:600px;">
+                        <div class="stat-table-mobile-scroll" style="overflow-x:auto;">
+                            <table class="stat-calc-table" style="width:100%; border-collapse: collapse; text-align:center;">
+                                <colgroup>
+                                    <col style="width: 15%;">
+                                    <col style="width: 15%;">
+                                    <col style="width: 15%;">
+                                    <col style="width: 25%;">
+                                    <col style="width: 18%;">
+                                    <col style="width: 12%;">
+                                </colgroup>
                                 <thead>
                                     <tr style="background:#f5f5f5; border-bottom: 2px solid #ddd;">
                                         <th style="padding:10px;">스탯</th>
-                                        <th style="padding:10px; width:70px;">종족값</th>
-                                        <th style="padding:10px; width:80px;">개체(IV)</th>
-                                        <th style="padding:10px; width:150px;">노력치(EV)</th>
-                                        <th style="padding:10px; width:130px;">성격 보정 (+/-)</th>
-                                        <th style="padding:10px; font-size: 1.1em; color:#d32f2f;">실수값</th>
+                                        <th style="padding:10px;">종족</th>
+                                        <th style="padding:10px;">개체</th>
+                                        <th style="padding:10px;">노력</th>
+                                        <th style="padding:10px;">성격</th>
+                                        <th style="padding:10px; color:#d32f2f;">실능</th>
                                     </tr>
                                 </thead>
                                 <tbody>
