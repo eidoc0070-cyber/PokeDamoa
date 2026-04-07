@@ -8,6 +8,7 @@ export interface PokemonData {
     types: PokemonType[];
     stats: { hp: number; atk: number; def: number; spa: number; spd: number; spe: number };
     genId: number;
+    captureRate: number;
     isDefault: boolean;
 }
 

@@ -41,10 +41,13 @@ try {
 
   console.log('데이터 매핑 중...');
 
-  // 1. species_id -> generation_id 매핑
-  const speciesGenMap = new Map<number, number>();
+  // 1. species_id -> generation_id, capture_rate 매핑
+  const speciesDataMap = new Map<number, { genId: number, captureRate: number }>();
   speciesList.forEach(s => {
-    speciesGenMap.set(parseInt(s.id), parseInt(s.generation_id));
+    speciesDataMap.set(parseInt(s.id), {
+      genId: parseInt(s.generation_id),
+      captureRate: parseInt(s.capture_rate) || 0
+    });
   });
 
   // 2. species_id -> 한국어 이름 매핑 (local_language_id = 3)
@@ -100,7 +103,10 @@ try {
     const speciesId = parseInt(p.species_id);
     const isDefault = parseInt(p.is_default) === 1;
     
-    const genId = speciesGenMap.get(speciesId) || 0;
+    const sData = speciesDataMap.get(speciesId);
+    const genId = sData ? sData.genId : 0;
+    const captureRate = sData ? sData.captureRate : 0;
+
     const nameKo = speciesNameMap.get(speciesId) || p.identifier; // 한글 이름이 없으면 영문명 대체
     const types = (pokemonToTypesMap.get(id) || []).filter(Boolean); // 배열 빈칸 제거
     const stats = pokemonToStatsMap.get(id) || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
@@ -113,6 +119,7 @@ try {
       types,
       stats,
       genId,
+      captureRate,
       isDefault
     });
   });

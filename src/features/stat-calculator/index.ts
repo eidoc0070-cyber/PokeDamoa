@@ -24,6 +24,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
         const fullData = await fetchPokedexData();
         
         let selectedPoke: PokemonData | null = fullData.find(p => p.id === 445) || (fullData.length > 0 ? fullData[0] : null);
+        let baseStats: Record<StatKey, number> = selectedPoke ? { ...selectedPoke.stats as any } : { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
         let level = 50;
         let ivs: Record<StatKey, number> = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
         let evs: Record<StatKey, number> = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
@@ -31,12 +32,12 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
         let natureMinus: StatKey | 'none' = 'none';
 
         const calcStat = (key: StatKey) => {
-            if (!selectedPoke) return 0;
-            const base = (selectedPoke.stats as any)[key];
+            const base = baseStats[key];
             const iv = ivs[key];
             const ev = evs[key];
             
             if (key === 'hp') {
+                if (base === 1) return 1; // 껍질몬 등 특수 케이스 대응 가능하게 (기본 1이면 1 고정은 아니지만 여기선 단순화)
                 return Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100) + level + 10;
             } else {
                 let modifier = 1.0;
@@ -102,7 +103,9 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                                     ${STAT_KEYS.map(key => `
                                         <tr style="border-bottom: 1px solid #eee;">
                                             <td style="padding:10px; font-weight:bold; color:${STAT_COLORS[key]}">${STAT_NAMES[key]}</td>
-                                            <td style="padding:10px; font-size:1.1em;">${selectedPoke ? (selectedPoke.stats as any)[key] : '-'}</td>
+                                            <td style="padding:10px;">
+                                                <input type="number" class="base-stat-input" data-stat="${key}" value="${baseStats[key]}" min="1" max="255" style="width: 50px; text-align:center; font-size:1.1em;" />
+                                            </td>
                                             <td style="padding:10px;">
                                                 <input type="number" class="iv-input" data-stat="${key}" value="${ivs[key]}" min="0" max="31" style="width: 50px; text-align:center;" />
                                             </td>
@@ -210,6 +213,9 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 if (item) {
                     const id = parseInt(item.getAttribute('data-id') || '0');
                     selectedPoke = fullData.find(x => x.id === id) || null;
+                    if (selectedPoke) {
+                        baseStats = { ...selectedPoke.stats as any };
+                    }
                     dropdown.style.display = 'none';
                     renderUI();
                 }
@@ -218,6 +224,18 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             levelInput.addEventListener('change', (e) => {
                 level = parseInt((e.target as HTMLInputElement).value) || 50;
                 renderUI();
+            });
+
+            container.querySelectorAll('.base-stat-input').forEach(el => {
+                el.addEventListener('change', (e) => {
+                    const target = e.target as HTMLInputElement;
+                    const stat = target.getAttribute('data-stat') as StatKey;
+                    let val = parseInt(target.value) || 0;
+                    if (val > 255) val = 255;
+                    if (val < 1) val = 1;
+                    baseStats[stat] = val;
+                    renderUI();
+                });
             });
 
             container.querySelectorAll('.iv-input').forEach(el => {

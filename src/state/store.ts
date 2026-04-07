@@ -32,8 +32,9 @@ export class Store<T> {
 // 전역 앱 상태 타입 (다크모드, 커스텀모드, 세대 정보 등)
 export interface AppState {
   isDarkMode: boolean;
-  isCustomMode: boolean; // 체크 해제: 합법만, 체크: 불가능/수정가능 포함
-  generation: 9 | 'champions'; // 우선 9세대와 Champions 모드만 지원
+  isCustomMode: boolean; 
+  generation: 9 | 'champions';
+  activeTab: string;
 }
 
 // 전역 스토어 인스턴스
@@ -41,4 +42,5 @@ export const globalStore = new Store<AppState>({
   isDarkMode: false,
   isCustomMode: false,
   generation: 9,
+  activeTab: 'settings',
 });
