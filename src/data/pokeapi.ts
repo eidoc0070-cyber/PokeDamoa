@@ -10,6 +10,7 @@ export interface PokemonData {
     genId: number;
     captureRate: number;
     isDefault: boolean;
+    encounters: { genId: number; versionName: string; locations: string[] }[];
 }
 
 export interface MoveData {

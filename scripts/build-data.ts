@@ -38,6 +38,14 @@ try {
   const pokemonStatsList = parseCSV('pokemon_stats.csv');
   const movesList = parseCSV('moves.csv');
   const moveNamesList = parseCSV('move_names.csv');
+  
+  // 출현 위치 정보를 위한 CSV 파싱
+  const encountersList = parseCSV('encounters.csv');
+  const locationsList = parseCSV('locations.csv');
+  const locationNamesList = parseCSV('location_names.csv');
+  const versionsList = parseCSV('versions.csv');
+  const versionNamesList = parseCSV('version_names.csv');
+  const versionGroupsList = parseCSV('version_groups.csv');
 
   console.log('데이터 매핑 중...');
 
@@ -77,7 +85,6 @@ try {
   });
 
   // 5. pokemon_id -> stats
-  // stats.csv 의 id: 1=hp, 2=atk, 3=def, 4=spa, 5=spd, 6=spe
   const pokemonToStatsMap = new Map<number, any>();
   const statKeyMap: Record<number, string> = { 1: 'hp', 2: 'atk', 3: 'def', 4: 'spa', 5: 'spd', 6: 'spe' };
   pokemonStatsList.forEach(ps => {
@@ -94,6 +101,84 @@ try {
     }
   });
 
+  // --- 출현 위치 정보 매핑 시작 ---
+  
+  // location_id -> Korean Name
+  const locationNameMap = new Map<number, string>();
+  locationNamesList.forEach(ln => {
+    if (ln.local_language_id === '3') {
+      locationNameMap.set(parseInt(ln.location_id), ln.name);
+    }
+  });
+
+  // location_area_id -> location_id
+  const locationAreaToLocationMap = new Map<number, number>();
+  const locationAreasList = parseCSV('location_areas.csv');
+  locationAreasList.forEach(la => {
+    locationAreaToLocationMap.set(parseInt(la.id), parseInt(la.location_id));
+  });
+
+  // version_id -> { name: string, genId: number }
+  const versionGroupMap = new Map<number, { genId: number }>();
+  versionGroupsList.forEach(vg => {
+    versionGroupMap.set(parseInt(vg.id), { genId: parseInt(vg.generation_id) });
+  });
+
+  const versionMap = new Map<number, { name: string, genId: number }>();
+  const versionNameMap = new Map<number, string>();
+  versionNamesList.forEach(vn => {
+    if (vn.local_language_id === '3') {
+      versionNameMap.set(parseInt(vn.version_id), vn.name);
+    }
+  });
+
+  versionsList.forEach(v => {
+    const vid = parseInt(v.id);
+    const vgid = parseInt(v.version_group_id);
+    const vg = versionGroupMap.get(vgid);
+    const name = versionNameMap.get(vid) || v.identifier;
+    versionMap.set(vid, { name, genId: vg ? vg.genId : 0 });
+  });
+
+  // pokemon_id -> encounters grouped by version
+  // { [versionId]: Set<locationName> }
+  const pokemonEncountersRaw = new Map<number, Map<number, Set<string>>>();
+  encountersList.forEach(e => {
+    const pid = parseInt(e.pokemon_id);
+    const vid = parseInt(e.version_id);
+    const laid = parseInt(e.location_area_id);
+    const lid = locationAreaToLocationMap.get(laid);
+    if (!lid) return;
+    const lName = locationNameMap.get(lid);
+    if (!lName) return;
+
+    if (!pokemonEncountersRaw.has(pid)) pokemonEncountersRaw.set(pid, new Map());
+    const versionMap = pokemonEncountersRaw.get(pid)!;
+    if (!versionMap.has(vid)) versionMap.set(vid, new Set());
+    versionMap.get(vid)!.add(lName);
+  });
+
+  // pokemon_id -> Array of { genId, versionName, locations: string[] }
+  const pokemonEncountersMap = new Map<number, any[]>();
+  pokemonEncountersRaw.forEach((vMap, pid) => {
+    const encounters: any[] = [];
+    vMap.forEach((lSet, vid) => {
+      const vInfo = versionMap.get(vid);
+      if (vInfo) {
+        encounters.push({
+          genId: vInfo.genId,
+          versionName: vInfo.name,
+          locations: Array.from(lSet)
+        });
+      }
+    });
+    // 정렬: 세대순, 버전이름순
+    encounters.sort((a, b) => a.genId - b.genId || a.versionName.localeCompare(b.versionName));
+    pokemonEncountersMap.set(pid, encounters);
+  });
+
+  // --- 출현 위치 정보 매핑 종료 ---
+
   console.log('JSON 조립 중...');
 
   const finalPokedex: any[] = [];
@@ -107,9 +192,12 @@ try {
     const genId = sData ? sData.genId : 0;
     const captureRate = sData ? sData.captureRate : 0;
 
-    const nameKo = speciesNameMap.get(speciesId) || p.identifier; // 한글 이름이 없으면 영문명 대체
-    const types = (pokemonToTypesMap.get(id) || []).filter(Boolean); // 배열 빈칸 제거
+    const nameKo = speciesNameMap.get(speciesId) || p.identifier;
+    const types = (pokemonToTypesMap.get(id) || []).filter(Boolean);
     const stats = pokemonToStatsMap.get(id) || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+    
+    // 출현 위치 정보 추가
+    const encounters = pokemonEncountersMap.get(id) || [];
 
     finalPokedex.push({
       id,
@@ -120,7 +208,8 @@ try {
       stats,
       genId,
       captureRate,
-      isDefault
+      isDefault,
+      encounters
     });
   });
 

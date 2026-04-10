@@ -1,7 +1,7 @@
 import { globalStore } from './state/store.js';
 import type { AppState } from './state/store.js';
 import { loadSettings, saveSettings, getExternalLinks } from './state/storage.js';
-import { getTabFromPath, updatePath, getCurrentStateUrl, restoreStateFromUrl } from './state/url-params.js';
+import { getTabFromPath, updatePath, getCurrentStateUrl } from './state/url-params.js';
 import { renderSettings } from './features/settings/index.js';
 import { renderTypeCalculator } from './features/type-calculator/index.js';
 import { renderPokedex } from './features/pokedex/index.js';
@@ -14,17 +14,7 @@ import { renderExternalLinks } from './features/external-links/index.js';
  * 애플리케이션의 메인 레이아웃 및 탭 라우팅을 초기화합니다.
  */
 export function initApp(container: HTMLElement) {
-  // 1. 초기 상태 로드 (LocalStorage)
-  const saved = loadSettings();
-  if (saved) {
-    globalStore.setState({
-      isDarkMode: saved.isDarkMode,
-      isCustomMode: saved.isCustomMode,
-      generation: saved.generation
-    });
-  }
-
-  // 2. 기본 레이아웃 골격 생성
+  // 1. 기본 레이아웃 골격 생성
   container.innerHTML = `
     <div class="app-container" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
       <header id="main-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px; position: relative;">
@@ -39,13 +29,7 @@ export function initApp(container: HTMLElement) {
       </header>
       
       <nav id="tab-menu" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-        <button data-tab="settings" style="padding: 10px 15px; font-weight: bold; cursor:pointer;">설정</button>
-        <button data-tab="type-calculator" style="padding: 10px 15px; cursor:pointer;">타입 계산기</button>
-        <button data-tab="pokedex" style="padding: 10px 15px; cursor:pointer;">포켓몬 도감</button>
-        <button data-tab="stat-calculator" style="padding: 10px 15px; cursor:pointer; border-color: #673ab7;">실수값 계산기</button>
-        <button data-tab="damage-calculator" style="padding: 10px 15px; cursor:pointer; border-color: #e65100;">데미지 계산기</button>
-        <button data-tab="catch-calculator" style="padding: 10px 15px; cursor:pointer; border-color: #ed1c24;">포획률 계산기</button>
-        <button data-tab="external-links" style="padding: 10px 15px; cursor:pointer; border-color: #2196f3;">외부 링크</button>
+        <!-- 탭 버튼이 동적으로 렌더링될 자리 -->
       </nav>
 
       <main id="tab-content" style="background: var(--bg-color); min-height: 400px; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -54,30 +38,7 @@ export function initApp(container: HTMLElement) {
     </div>
   `;
 
-  // 3. 다크모드 및 전역 상태 연동
-  globalStore.subscribe((state: AppState) => {
-    if (state.isDarkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-
-    // 활성 탭 버튼 스타일 업데이트
-    const tabs = container.querySelectorAll<HTMLButtonElement>('#tab-menu button');
-    tabs.forEach(btn => {
-      const isSelected = btn.getAttribute('data-tab') === state.activeTab;
-      btn.style.backgroundColor = isSelected ? 'var(--primary-color)' : 'transparent';
-      btn.style.color = isSelected ? '#fff' : 'inherit';
-      btn.style.border = isSelected ? '1px solid var(--primary-color)' : '1px solid #ccc';
-    });
-  });
-
-  // 초기 상태 로드시 즉시 반영
-  if (globalStore.getState().isDarkMode) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-
-  // 4. 탭 라우팅 처리 로직
+  const tabMenu = container.querySelector('#tab-menu') as HTMLElement;
   const tabContent = container.querySelector<HTMLElement>('#tab-content')!;
   let cleanupCurrentTab: (() => void) | null = null;
 
@@ -100,29 +61,19 @@ export function initApp(container: HTMLElement) {
         cleanupCurrentTab = renderTypeCalculator(tabContent);
         break;
       case 'pokedex':
-        renderPokedex(tabContent).then(cleanup => {
-            cleanupCurrentTab = cleanup;
-        });
+        renderPokedex(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'stat-calculator':
-        renderStatCalculator(tabContent).then(cleanup => {
-            cleanupCurrentTab = cleanup;
-        });
+        renderStatCalculator(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'damage-calculator':
-        renderDamageCalculator(tabContent).then(cleanup => {
-            cleanupCurrentTab = cleanup;
-        });
+        renderDamageCalculator(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'catch-calculator':
-        renderCatchCalculator(tabContent).then(cleanup => {
-            cleanupCurrentTab = cleanup;
-        });
+        renderCatchCalculator(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'external-links':
-        renderExternalLinks(tabContent).then(cleanup => {
-            cleanupCurrentTab = cleanup;
-        });
+        renderExternalLinks(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       default:
         tabContent.innerHTML = '<p>아직 연결되지 않은 탭입니다.</p>';
@@ -130,23 +81,58 @@ export function initApp(container: HTMLElement) {
     }
   };
 
-  // 탭 버튼 클릭 이벤트
-  const tabs = container.querySelectorAll<HTMLButtonElement>('#tab-menu button');
-  const tabMenu = container.querySelector('#tab-menu') as HTMLElement;
-  const hamburgerBtn = container.querySelector('#hamburger-menu-btn') as HTMLElement;
+  // 탭 메뉴 렌더링 함수
+  const renderTabs = (state: AppState) => {
+    if (state.isDarkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
 
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tabName = btn.getAttribute('data-tab');
-      if (tabName) navigateTo(tabName);
-      // 모바일에서 탭 선택 후 메뉴 닫기
-      if (window.innerWidth <= 768) {
-          tabMenu.classList.remove('open');
-      }
+    const visibleTabs = state.tabs.filter(t => t.isVisible);
+    tabMenu.innerHTML = visibleTabs.map(tab => `
+        <button data-tab="${tab.id}" style="padding: 10px 15px; cursor:pointer; font-weight: ${tab.id === 'settings' ? 'bold' : 'normal'}; border-radius: 4px; transition: all 0.2s;">
+            ${tab.currentName}
+        </button>
+    `).join('');
+
+    const buttons = tabMenu.querySelectorAll<HTMLButtonElement>('button');
+    buttons.forEach(btn => {
+      const tabId = btn.getAttribute('data-tab')!;
+      const isSelected = tabId === state.activeTab;
+      
+      btn.style.backgroundColor = isSelected ? 'var(--primary-color)' : 'transparent';
+      btn.style.color = isSelected ? '#fff' : 'inherit';
+      btn.style.border = isSelected ? '1px solid var(--primary-color)' : '1px solid #ccc';
+
+      btn.onclick = () => {
+        navigateTo(tabId);
+        if (window.innerWidth <= 768) {
+            tabMenu.classList.remove('open');
+        }
+      };
     });
-  });
+  };
+
+  // 3. 전역 상태 연동
+  globalStore.subscribe(renderTabs);
+
+  // 1. 초기 상태 로드 (LocalStorage) 및 반영
+  const saved = loadSettings();
+  if (saved) {
+    globalStore.setState({
+      isDarkMode: saved.isDarkMode,
+      isCustomMode: saved.isCustomMode,
+      generation: saved.generation,
+      tabs: saved.tabs || globalStore.getState().tabs
+    });
+  }
+  
+  // 최초 렌더링 강제 실행
+  renderTabs(globalStore.getState());
 
   // 햄버거 버튼 토글
+  const hamburgerBtn = container.querySelector('#hamburger-menu-btn') as HTMLElement;
   hamburgerBtn?.addEventListener('click', () => {
     tabMenu.classList.toggle('open');
   });
@@ -164,28 +150,45 @@ export function initApp(container: HTMLElement) {
       isDarkMode: state.isDarkMode,
       isCustomMode: state.isCustomMode,
       generation: state.generation,
+      tabs: state.tabs,
       externalLinks: getExternalLinks() || undefined
     });
-    alert('현재 설정 및 외부 링크가 저장되었습니다. (브라우저를 닫아도 유지됩니다)');
+    alert('설정이 저장되었습니다.');
   });
 
   btnCopyUrl.addEventListener('click', async () => {
     const url = getCurrentStateUrl();
     try {
       await navigator.clipboard.writeText(url);
-      alert('현재 URL이 클립보드에 복사되었습니다.');
+      alert('URL이 클립보드에 복사되었습니다.');
     } catch (err) {
-      alert('클립보드 복사 실패: ' + url);
+      alert('URL 복사 실패');
     }
   });
 
   // 6. 최초 로드 시 URL에 기반한 탭 표시
-  const initialTab = getTabFromPath();
+  let initialTab = getTabFromPath();
+  const currentTabs = globalStore.getState().tabs;
+  const targetTab = currentTabs.find(t => t.id === initialTab);
+
+  if (targetTab && !targetTab.isVisible) {
+      if (confirm(`현재 설정에 없는 [${targetTab.currentName}] 탭 링크로 접속하셨습니다. 이 기능을 상단 탭에 추가할까요?`)) {
+          const newTabs = currentTabs.map(t => t.id === initialTab ? { ...t, isVisible: true } : t);
+          globalStore.setState({ tabs: newTabs });
+          saveSettings({ ...globalStore.getState(), tabs: newTabs });
+      } else {
+          // '아니오' 클릭 시: 이번 접속에 한해서만 임시로 해당 탭을 상단 바 끝에 표시
+          const target = currentTabs.find(t => t.id === initialTab);
+          if (target) {
+              const otherTabs = currentTabs.filter(t => t.id !== initialTab);
+              globalStore.setState({ tabs: [...otherTabs, { ...target, isVisible: true }] });
+          }
+      }
+  }
+
   navigateTo(initialTab);
 
-  // 뒤로가기/앞으로가기 대응
   window.addEventListener('popstate', () => {
-    const tab = getTabFromPath();
-    navigateTo(tab);
+    navigateTo(getTabFromPath());
   });
 }

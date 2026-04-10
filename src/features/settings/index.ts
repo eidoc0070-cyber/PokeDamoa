@@ -1,6 +1,7 @@
 import { globalStore } from '../../state/store.js';
 import type { AppState } from '../../state/store.js';
-import { saveSettings, getExternalLinks } from '../../state/storage.js';
+import { saveSettings, getExternalLinks, DEFAULT_TABS } from '../../state/storage.js';
+import type { TabItem } from '../../state/storage.js';
 
 export function renderSettings(container: HTMLElement) {
   container.innerHTML = `
@@ -42,6 +43,14 @@ export function renderSettings(container: HTMLElement) {
         </div>
       </div>
 
+      <div style="background:rgba(33, 150, 243, 0.05); padding:20px; border-radius:12px; margin-bottom:20px; border: 1px solid rgba(33, 150, 243, 0.2);">
+        <h3 style="margin-top:0; color:#1976d2;">UI 구성 및 메뉴 관리</h3>
+        <p style="margin-bottom:15px; font-size:0.9rem;">상단 내비게이션 바에 표시될 탭의 이름과 순서, 노출 여부를 관리합니다.</p>
+        <button id="btn-open-tab-manager" style="padding:12px 20px; background:#2196f3; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem; box-shadow: 0 2px 4px rgba(33,150,243,0.3);">
+            상단 탭 설정 관리자 열기
+        </button>
+      </div>
+
       <div style="border-top: 1px solid #eee; padding-top:20px; margin-top:20px;">
         <h3 style="margin-top:0;">데이터 관리</h3>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -63,6 +72,7 @@ export function renderSettings(container: HTMLElement) {
   const generationSelect = container.querySelector<HTMLSelectElement>('#generation-select')!;
   const btnExport = container.querySelector<HTMLButtonElement>('#btn-export-settings')!;
   const btnImport = container.querySelector<HTMLButtonElement>('#btn-import-settings')!;
+  const btnOpenTabManager = container.querySelector<HTMLButtonElement>('#btn-open-tab-manager')!;
   
   const debugDark = container.querySelector<HTMLSpanElement>('#debug-dark')!;
   const debugGen = container.querySelector<HTMLSpanElement>('#debug-gen')!;
@@ -85,7 +95,8 @@ export function renderSettings(container: HTMLElement) {
     saveSettings({
         isDarkMode: newState.isDarkMode,
         isCustomMode: newState.isCustomMode,
-        generation: newState.generation
+        generation: newState.generation,
+        tabs: newState.tabs
     });
   };
 
@@ -103,6 +114,11 @@ export function renderSettings(container: HTMLElement) {
     syncAndSave({ generation: val as typeof state.generation });
   });
 
+  // 탭 관리자 모달 열기
+  btnOpenTabManager.addEventListener('click', () => {
+    renderTabManagerModal();
+  });
+
   // 내보내기 / 가져오기
   btnExport.addEventListener('click', async () => {
     const s = globalStore.getState();
@@ -110,11 +126,12 @@ export function renderSettings(container: HTMLElement) {
         isDarkMode: s.isDarkMode,
         isCustomMode: s.isCustomMode,
         generation: s.generation,
+        tabs: s.tabs,
         externalLinks: getExternalLinks() // 외부 링크 데이터 포함
     };
     try {
         await navigator.clipboard.writeText(JSON.stringify(config));
-        alert('설정 및 외부 링크 데이터가 클립보드에 복사되었습니다.');
+        alert('설정 및 상단 탭, 외부 링크 데이터가 클립보드에 복사되었습니다.');
     } catch (err) {
         alert('복사 실패');
     }
@@ -128,20 +145,165 @@ export function renderSettings(container: HTMLElement) {
             // 전체 저장 함수 호출 (외부 링크 포함)
             saveSettings(config);
             
-            // 전역 스토어 업데이트 (코어 설정만)
+            // 전역 스토어 업데이트
             globalStore.setState({
                 isDarkMode: config.isDarkMode,
                 isCustomMode: config.isCustomMode,
-                generation: config.generation
+                generation: config.generation,
+                tabs: config.tabs || globalStore.getState().tabs
             });
             
-            alert('설정과 외부 링크가 성공적으로 적용되었습니다.');
+            alert('설정과 상단 탭, 외부 링크가 성공적으로 적용되었습니다.');
             window.location.reload(); 
         } catch (e) {
             alert('올바르지 않은 설정 데이터 형식입니다.');
         }
     }
   });
+
+  function renderTabManagerModal() {
+    const overlay = document.createElement('div');
+    overlay.id = 'tab-manager-overlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+        z-index: 9999; backdrop-filter: blur(4px);
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: var(--bg-color, #fff); width: 90%; max-width: 500px; max-height: 80vh;
+        border-radius: 12px; padding: 25px; display: flex; flex-direction: column; gap: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; overflow: hidden;
+    `;
+
+    let currentTabs = [...globalStore.getState().tabs];
+
+    const updateUI = () => {
+        modal.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0;">상단 탭 설정</h2>
+                <button id="modal-close" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <p style="color:#666; font-size:0.9rem; margin:0;">드래그하여 순서를 변경하고, 이름을 수정하거나 숨길 수 있습니다.</p>
+            
+            <div id="modal-tab-list" style="display:flex; flex-direction:column; gap:10px; overflow-y:auto; padding-right:5px;">
+                ${currentTabs.map((tab, index) => `
+                    <div class="modal-tab-item" data-id="${tab.id}" data-index="${index}" style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #eee; border-radius:8px; background: ${tab.isVisible ? 'transparent' : 'rgba(0,0,0,0.05)'}; transition: background 0.2s;">
+                        <div class="drag-handle" style="cursor:grab; color:#ccc; font-size:1.2rem; user-select:none; padding:0 5px;">☰</div>
+                        <input type="checkbox" class="tab-visibility" data-id="${tab.id}" ${tab.isVisible ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;" />
+                        <input type="text" class="tab-name-input" data-id="${tab.id}" value="${tab.currentName}" style="flex:1; padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:0.95rem; ${!tab.isVisible ? 'color:#999; background:#f9f9f9;' : ''}" />
+                    </div>
+                `).join('')}
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:15px; border-top:1px solid #eee;">
+                <button id="btn-reset-tabs" style="background:none; border:none; color:#d32f2f; cursor:pointer; font-size:0.9rem; text-decoration:underline;">기본값으로 초기화</button>
+                <div style="display:flex; gap:10px;">
+                    <button id="btn-modal-cancel" style="padding:10px 18px; background:#f5f5f5; border:1px solid #ddd; border-radius:6px; cursor:pointer; font-weight:bold;">취소</button>
+                    <button id="btn-modal-save" style="padding:10px 18px; background:#4caf50; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">저장 및 적용</button>
+                </div>
+            </div>
+        `;
+        attachModalEvents();
+    };
+
+    const attachModalEvents = () => {
+        modal.querySelector('#modal-close')?.addEventListener('click', () => overlay.remove());
+        modal.querySelector('#btn-modal-cancel')?.addEventListener('click', () => overlay.remove());
+        
+        modal.querySelector('#btn-modal-save')?.addEventListener('click', () => {
+            syncAndSave({ tabs: currentTabs });
+            overlay.remove();
+        });
+
+        modal.querySelector('#btn-reset-tabs')?.addEventListener('click', () => {
+            if (confirm('상단 탭 설정이 초기 상태로 돌아갑니다. 계속하시겠습니까?')) {
+                currentTabs = [...DEFAULT_TABS];
+                updateUI();
+            }
+        });
+
+        // 가시성 토글
+        modal.querySelectorAll('.tab-visibility').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const id = (e.target as HTMLInputElement).getAttribute('data-id');
+                const isVisible = (e.target as HTMLInputElement).checked;
+                const tab = currentTabs.find(t => t.id === id);
+                if (tab) {
+                    tab.isVisible = isVisible;
+                    updateUI(); // 스타일 갱신 위해 재렌더링
+                }
+            });
+        });
+
+        // 이름 수정
+        modal.querySelectorAll('.tab-name-input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const id = (e.target as HTMLInputElement).getAttribute('data-id');
+                const value = (e.target as HTMLInputElement).value;
+                const tab = currentTabs.find(t => t.id === id);
+                if (tab) tab.currentName = value;
+            });
+        });
+
+        // 드래그 앤 드롭
+        let draggedIndex: number | null = null;
+        const items = modal.querySelectorAll('.modal-tab-item');
+        
+        items.forEach(item => {
+            const handle = item.querySelector('.drag-handle') as HTMLElement;
+            handle.addEventListener('mousedown', () => {
+                (item as HTMLElement).setAttribute('draggable', 'true');
+            });
+
+            const resetDraggable = () => {
+                (item as HTMLElement).setAttribute('draggable', 'false');
+            };
+
+            item.addEventListener('dragstart', (e) => {
+                draggedIndex = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index') || '0');
+                (e.currentTarget as HTMLElement).style.opacity = '0.4';
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const targetIndex = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index') || '0');
+                if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                    const draggedTab = currentTabs[draggedIndex];
+                    currentTabs.splice(draggedIndex, 1);
+                    currentTabs.splice(targetIndex, 0, draggedTab);
+                    updateUI();
+                }
+            });
+
+            item.addEventListener('dragend', (e) => {
+                (e.currentTarget as HTMLElement).style.opacity = '1';
+                draggedIndex = null;
+                resetDraggable();
+            });
+
+            item.addEventListener('mouseup', resetDraggable);
+        });
+    };
+
+    updateUI();
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // ESC 키로 닫기
+    const escListener = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            overlay.remove();
+            document.removeEventListener('keydown', escListener);
+        }
+    };
+    document.addEventListener('keydown', escListener);
+  }
 
   // 3. 반대로 Store의 상태가 변경되면 UI를 동기화하는 컴포넌트 구독(리스너) 역할입니다.
   const unsubscribe = globalStore.subscribe((newState: AppState) => {

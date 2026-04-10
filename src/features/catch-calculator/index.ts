@@ -2,6 +2,7 @@ import { fetchPokedexData } from '../../data/pokeapi.js';
 import type { PokemonData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
 import { getQueryParams, updateQueryParams } from '../../state/url-params.js';
+import { globalStore } from '../../state/store.js';
 
 export async function renderCatchCalculator(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `
@@ -41,6 +42,7 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
 
         const renderUI = () => {
             const chance = calculateCatchChance();
+            const currentGen = globalStore.getState().generation;
 
             // URL 동기화
             updateQueryParams({
@@ -53,8 +55,8 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
             container.innerHTML = `
                 <div class="catch-calculator-container" style="display:flex; flex-direction:column; gap:20px;">
                     <div>
-                        <h2 style="margin-top:0;">포획률 계산기</h2>
-                        <p style="color:#666; font-size:0.9em; margin-bottom:20px;">포켓몬의 남은 체력, 상태이상, 볼 종류에 따른 포획 확률을 계산합니다.</p>
+                        <h2 style="margin-top:0;">포획 정보 및 계산기</h2>
+                        <p style="color:#666; font-size:0.9em; margin-bottom:20px;">포켓몬의 포획 확률과 출현 위치(서식지) 정보를 확인하세요.</p>
                         
                         <div style="display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start;">
                             <div style="flex: 1; min-width: 300px;">
@@ -126,6 +128,30 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
                                     </div>
                                 ` : ''}
                             </div>
+                        </div>
+
+                        <div id="habitat-section" style="margin-top:40px; border-top: 1px solid #eee; padding-top:30px;">
+                            <h3 style="margin-top:0;">서식지 및 출현 위치 (Habitat)</h3>
+                            ${selectedPoke && selectedPoke.encounters.length > 0 ? `
+                                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
+                                    ${selectedPoke.encounters.map(enc => {
+                                        const isCurrentGen = enc.genId.toString() === currentGen.toString();
+                                        return `
+                                            <div class="encounter-card" style="padding:15px; border-radius:10px; background:${isCurrentGen ? 'rgba(237, 28, 36, 0.05)' : '#fff'}; border: 1px solid ${isCurrentGen ? '#ed1c24' : '#eee'}; opacity: ${isCurrentGen ? '1' : '0.5'}; transition: opacity 0.3s, transform 0.3s;">
+                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                                    <span style="font-weight:bold; font-size:1rem; color:${isCurrentGen ? '#ed1c24' : '#333'}">${enc.versionName}</span>
+                                                    <span style="font-size:0.8rem; background:#eee; padding:2px 6px; border-radius:4px; color:#666;">${enc.genId}세대</span>
+                                                </div>
+                                                <div style="font-size:0.9rem; color:#555; line-height:1.4;">
+                                                    ${enc.locations.join(', ')}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : `
+                                <p style="color:#999; font-style:italic;">출현 위치 정보가 없거나 야생에서 포획할 수 없는 포켓몬입니다.</p>
+                            `}
                         </div>
                     </div>
                 </div>
@@ -213,6 +239,15 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
         };
 
         renderUI();
+
+        // 전역 스토어 구독 (세대 설정 변경 시 UI 업데이트)
+        const unsubscribe = globalStore.subscribe(() => {
+            renderUI();
+        });
+
+        return () => {
+            unsubscribe();
+        };
 
     } catch (err) {
         container.innerHTML = `<p style="color:red; text-align:center;">오류가 발생했습니다.<br/>${err}</p>`;
