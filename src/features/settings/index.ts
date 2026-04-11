@@ -2,6 +2,7 @@ import { globalStore } from '../../state/store.js';
 import type { AppState } from '../../state/store.js';
 import { saveSettings, getExternalLinks, DEFAULT_TABS } from '../../state/storage.js';
 import type { TabItem } from '../../state/storage.js';
+import { forceShowPwaBanner } from '../../components/PwaBanner.js';
 
 export function renderSettings(container: HTMLElement) {
   container.innerHTML = `
@@ -54,9 +55,14 @@ export function renderSettings(container: HTMLElement) {
       <div style="background:rgba(33, 150, 243, 0.05); padding:20px; border-radius:12px; margin-bottom:20px; border: 1px solid rgba(33, 150, 243, 0.2);">
         <h3 style="margin-top:0; color:#1976d2;">UI 구성 및 메뉴 관리</h3>
         <p style="margin-bottom:15px; font-size:0.9rem;">상단 내비게이션 바에 표시될 탭의 이름과 순서, 노출 여부를 관리합니다.</p>
-        <button id="btn-open-tab-manager" style="padding:12px 20px; background:#2196f3; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem; box-shadow: 0 2px 4px rgba(33,150,243,0.3);">
-            상단 탭 설정 관리자 열기
-        </button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="btn-open-tab-manager" style="padding:12px 20px; background:#2196f3; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem; box-shadow: 0 2px 4px rgba(33,150,243,0.3);">
+                상단 탭 설정 관리자 열기
+            </button>
+            <button id="btn-show-pwa-guide" style="padding:12px 20px; background:#4caf50; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem; box-shadow: 0 2px 4px rgba(76,175,80,0.3);">
+                PWA 설치 안내 다시 보기
+            </button>
+        </div>
       </div>
 
       <div style="border-top: 1px solid #eee; padding-top:20px; margin-top:20px;">
@@ -81,6 +87,7 @@ export function renderSettings(container: HTMLElement) {
   const btnExport = container.querySelector<HTMLButtonElement>('#btn-export-settings')!;
   const btnImport = container.querySelector<HTMLButtonElement>('#btn-import-settings')!;
   const btnOpenTabManager = container.querySelector<HTMLButtonElement>('#btn-open-tab-manager')!;
+  const btnShowPwaGuide = container.querySelector<HTMLButtonElement>('#btn-show-pwa-guide')!;
   
   const debugDark = container.querySelector<HTMLSpanElement>('#debug-dark')!;
   const debugGen = container.querySelector<HTMLSpanElement>('#debug-gen')!;
@@ -104,7 +111,9 @@ export function renderSettings(container: HTMLElement) {
         isDarkMode: newState.isDarkMode,
         isCustomMode: newState.isCustomMode,
         generation: newState.generation,
-        tabs: newState.tabs
+        tabs: newState.tabs,
+        visitCount: newState.visitCount,
+        pwaGuideDismissed: newState.pwaGuideDismissed
     });
   };
 
@@ -126,6 +135,11 @@ export function renderSettings(container: HTMLElement) {
   // 탭 관리자 모달 열기
   btnOpenTabManager.addEventListener('click', () => {
     renderTabManagerModal();
+  });
+
+  // PWA 안내 가이드 표시
+  btnShowPwaGuide.addEventListener('click', () => {
+    forceShowPwaBanner(document.body);
   });
 
   // 내보내기 / 가져오기

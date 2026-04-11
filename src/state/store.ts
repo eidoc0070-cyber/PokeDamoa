@@ -39,6 +39,8 @@ export interface AppState {
   generation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 'champions';
   activeTab: string;
   tabs: TabItem[];
+  visitCount: number;
+  pwaGuideDismissed: boolean;
 }
 
 // 전역 스토어 인스턴스
@@ -48,4 +50,6 @@ export const globalStore = new Store<AppState>({
   generation: 9,
   activeTab: 'settings',
   tabs: [...DEFAULT_TABS],
+  visitCount: 0,
+  pwaGuideDismissed: false,
 });

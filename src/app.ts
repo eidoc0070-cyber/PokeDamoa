@@ -9,6 +9,7 @@ import { renderStatCalculator } from './features/stat-calculator/index.js';
 import { renderDamageCalculator } from './features/damage-calculator/index.js';
 import { renderCatchCalculator } from './features/catch-calculator/index.js';
 import { renderExternalLinks } from './features/external-links/index.js';
+import { initPwaBanner } from './components/PwaBanner.js';
 
 /**
  * 애플리케이션의 메인 레이아웃 및 탭 라우팅을 초기화합니다.
@@ -124,9 +125,27 @@ export function initApp(container: HTMLElement) {
       isDarkMode: saved.isDarkMode,
       isCustomMode: saved.isCustomMode,
       generation: saved.generation,
-      tabs: saved.tabs || globalStore.getState().tabs
+      tabs: saved.tabs || globalStore.getState().tabs,
+      visitCount: (saved.visitCount || 0) + 1,
+      pwaGuideDismissed: saved.pwaGuideDismissed || false
     });
+  } else {
+    globalStore.setState({ visitCount: 1 });
   }
+
+  // 변경된 방문 횟수 즉시 저장
+  const currentState = globalStore.getState();
+  saveSettings({
+    isDarkMode: currentState.isDarkMode,
+    isCustomMode: currentState.isCustomMode,
+    generation: currentState.generation,
+    tabs: currentState.tabs,
+    visitCount: currentState.visitCount,
+    pwaGuideDismissed: currentState.pwaGuideDismissed
+  });
+
+  // PWA 배너 초기화
+  initPwaBanner(container);
   
   // 최초 렌더링 강제 실행
   renderTabs(globalStore.getState());
@@ -151,6 +170,8 @@ export function initApp(container: HTMLElement) {
       isCustomMode: state.isCustomMode,
       generation: state.generation,
       tabs: state.tabs,
+      visitCount: state.visitCount,
+      pwaGuideDismissed: state.pwaGuideDismissed,
       externalLinks: getExternalLinks() || undefined
     });
     alert('설정이 저장되었습니다.');
