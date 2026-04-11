@@ -36,7 +36,7 @@ export class Store<T> {
 export interface AppState {
   isDarkMode: boolean;
   isCustomMode: boolean; 
-  generation: 9 | 'champions';
+  generation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 'champions';
   activeTab: string;
   tabs: TabItem[];
 }

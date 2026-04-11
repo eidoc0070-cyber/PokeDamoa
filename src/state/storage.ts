@@ -25,7 +25,7 @@ export const DEFAULT_TABS: TabItem[] = [
 export interface SavedSettings {
     isDarkMode: boolean;
     isCustomMode: boolean;
-    generation: 9 | 'champions';
+    generation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 'champions';
     externalLinks?: any[]; // 외부 링크 데이터 포함 가능
     tabs?: TabItem[]; // 상단 탭 설정
 }

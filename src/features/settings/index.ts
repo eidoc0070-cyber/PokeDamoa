@@ -34,6 +34,14 @@ export function renderSettings(container: HTMLElement) {
             기준 세대 선택:
             <select id="generation-select" style="padding: 5px; font-size: 1rem; margin-left:10px;">
               <option value="9">9세대 (Scarlet / Violet)</option>
+              <option value="8">8세대 (Sword / Shield)</option>
+              <option value="7">7세대 (Sun / Moon)</option>
+              <option value="6">6세대 (X / Y)</option>
+              <option value="5">5세대 (Black / White)</option>
+              <option value="4">4세대 (Diamond / Pearl)</option>
+              <option value="3">3세대 (Ruby / Sapphire)</option>
+              <option value="2">2세대 (Gold / Silver)</option>
+              <option value="1">1세대 (Red / Blue)</option>
               <option value="champions">Champions</option>
             </select>
           </label>
@@ -111,7 +119,8 @@ export function renderSettings(container: HTMLElement) {
 
   generationSelect.addEventListener('change', (e) => {
     const val = (e.target as HTMLSelectElement).value;
-    syncAndSave({ generation: val as typeof state.generation });
+    const parsed = isNaN(Number(val)) ? val : Number(val);
+    syncAndSave({ generation: parsed as any });
   });
 
   // 탭 관리자 모달 열기

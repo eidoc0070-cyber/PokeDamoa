@@ -1,5 +1,5 @@
-import { fetchPokedexData } from '../../data/pokeapi.js';
-import type { PokemonData } from '../../data/pokeapi.js';
+import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
+import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
 import { calculateStat } from '../../utils/pokemon-math.js';
 
@@ -22,9 +22,14 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
     `;
 
     try {
-        const fullData = await fetchPokedexData();
+        const [fullData, movesData] = await Promise.all([
+            fetchPokedexData(),
+            fetchMovesData()
+        ]);
         
         let selectedPoke: PokemonData | null = fullData.find(p => p.id === 445) || (fullData.length > 0 ? fullData[0] : null);
+        let selectedMove: MoveData | null = null;
+
         let baseStats: Record<StatKey, number> = selectedPoke ? { ...selectedPoke.stats as any } : { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
         let level = 50;
         let ivs: Record<StatKey, number> = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
@@ -49,6 +54,26 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
         const renderUI = () => {
             const evTotal = Object.values(evs).reduce((a, b) => a + b, 0);
 
+            // 실수값 미리 계산
+            const hpReal = calcStat('hp');
+            const atkReal = calcStat('atk');
+            const defReal = calcStat('def');
+            const spaReal = calcStat('spa');
+            const spdReal = calcStat('spd');
+
+            // 내구력 계산 (데미지 계산기 탭과 동일한 공식 적용: HP * 방어)
+            const physBulk = hpReal * defReal;
+            const specBulk = hpReal * spdReal;
+
+            // 결정력 계산
+            let powerVal = 0;
+            let stab = 1.0;
+            if (selectedMove && selectedPoke) {
+                if (selectedPoke.types.includes(selectedMove.type)) stab = 1.5;
+                const statUsed = selectedMove.category === 'special' ? spaReal : atkReal;
+                powerVal = Math.floor(statUsed * selectedMove.power * stab);
+            }
+
             container.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
@@ -57,6 +82,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                             <p style="color:#666; font-size:0.9em; margin-bottom:10px;">배틀용 스탯을 정확한 본가 공식으로 연산합니다.</p>
                             
                             <div style="position:relative; margin-bottom: 20px;">
+                                <label style="font-weight:bold; display:block; margin-bottom:5px; font-size:0.9em;">포켓몬 검색</label>
                                 <input type="text" id="poke-search-input" placeholder="포켓몬 검색 (예: 한카리아스)" value="${selectedPoke?.nameKo || ''}" style="width: 100%; padding: 10px; border: 2px solid #007bff; border-radius: 8px; font-size: 1.1rem; box-sizing: border-box;" />
                                 <div id="poke-dropdown" style="display:none; position:absolute; top: 100%; left:0; width:100%; max-height:200px; overflow-y:auto; background:#fff; border:1px solid #ccc; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px; z-index:100;"></div>
                             </div>
@@ -105,7 +131,9 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${STAT_KEYS.map(key => `
+                                    ${STAT_KEYS.map(key => {
+                                        const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : calcStat(key)))));
+                                        return `
                                         <tr style="border-bottom: 1px solid #eee;">
                                             <td style="padding:10px; font-weight:bold; color:${STAT_COLORS[key]}">${STAT_NAMES[key]}</td>
                                             <td style="padding:10px;">
@@ -134,12 +162,55 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                                                 `}
                                             </td>
                                             <td style="padding:10px; font-size:1.5em; font-weight:bold; color:#d32f2f;">
-                                                ${calcStat(key)}
+                                                ${realVal}
                                             </td>
                                         </tr>
-                                    `).join('')}
+                                    `}).join('')}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <div style="background:#fff; border-radius:12px; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
+                            <div>
+                                <h3 style="margin-top:0; border-bottom: 2px solid #eee; padding-bottom:5px;">🛠 결정력 계산</h3>
+                                <div style="position:relative; margin-bottom: 10px;">
+                                    <label style="font-weight:bold; display:block; margin-bottom:5px; font-size:0.9em;">기술 검색</label>
+                                    <input type="text" id="move-search-input" placeholder="기술 이름 입력 (예: 지진)" value="${selectedMove?.nameKo || ''}" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+                                    <div id="move-dropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; max-height:200px; overflow-y:auto; background:#fff; border:1px solid #ccc; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-radius:4px; z-index:100;"></div>
+                                </div>
+                                ${selectedMove ? `
+                                    <div style="background:#f9f9f9; padding:10px; border-radius:6px; margin-bottom:10px; font-size:0.9em;">
+                                        <strong>${selectedMove.nameKo}</strong> 
+                                        <span style="padding:2px 5px; background:${TYPE_COLORS[selectedMove.type]}; color:#fff; border-radius:3px; font-size:0.8em; margin-left:5px;">${TYPE_NAMES_KO[selectedMove.type]}</span>
+                                        <span style="margin-left:5px;">위력: ${selectedMove.power}</span>
+                                        <div style="margin-top:5px; color:#666;">
+                                            공격종류: ${selectedMove.category === 'physical' ? '물리' : (selectedMove.category === 'special' ? '특수' : '변화')}
+                                            ${stab > 1.0 ? '<span style="color:#d32f2f; font-weight:bold; margin-left:10px;">(자속보정 1.5배 적용)</span>' : ''}
+                                        </div>
+                                    </div>
+                                ` : '<p style="color:#888; font-size:0.9em;">기술을 선택하면 결정력이 계산됩니다.</p>'}
+                                
+                                <div style="font-size:1.8em; font-weight:bold; color:#f57c00; text-align:center; padding:10px; background:rgba(245,124,0,0.1); border-radius:8px;">
+                                    결정력: ${powerVal.toLocaleString()}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 style="margin-top:0; border-bottom: 2px solid #eee; padding-bottom:5px;">🛡 내구력 계산</h3>
+                                <div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:rgba(251,192,45,0.1); border-radius:8px;">
+                                        <span style="font-weight:bold; color:#fbc02d; font-size:1.1em;">물리내구</span>
+                                        <span style="font-size:1.6em; font-weight:bold;">${physBulk.toLocaleString()}</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:rgba(76,175,80,0.1); border-radius:8px;">
+                                        <span style="font-weight:bold; color:#4caf50; font-size:1.1em;">특수내구</span>
+                                        <span style="font-size:1.6em; font-weight:bold;">${specBulk.toLocaleString()}</span>
+                                    </div>
+                                    <p style="font-size:0.8em; color:#888; margin-top:5px;">* 내구력 공식: HP실수값 &times; 방어(특방)실수값</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -193,6 +264,8 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
         const attachEvents = () => {
             const searchInput = container.querySelector('#poke-search-input') as HTMLInputElement;
             const dropdown = container.querySelector('#poke-dropdown') as HTMLDivElement;
+            const moveSearchInput = container.querySelector('#move-search-input') as HTMLInputElement;
+            const moveDropdown = container.querySelector('#move-dropdown') as HTMLDivElement;
             const btnNatureTable = container.querySelector('#btn-nature-table') as HTMLButtonElement;
             const modal = container.querySelector('#nature-modal') as HTMLElement;
             const modalClose = container.querySelector('#modal-close') as HTMLElement;
@@ -222,6 +295,36 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                         baseStats = { ...selectedPoke.stats as any };
                     }
                     dropdown.style.display = 'none';
+                    renderUI();
+                }
+            });
+
+            moveSearchInput?.addEventListener('input', () => {
+                const term = moveSearchInput.value.toLowerCase();
+                if (term.length === 0) {
+                    moveDropdown.style.display = 'none';
+                    return;
+                }
+                const matches = movesData.filter(m => 
+                    (m.nameKo.includes(term) || m.nameEn.toLowerCase().includes(term)) &&
+                    m.category !== 'status'
+                ).slice(0, 50);
+                
+                moveDropdown.innerHTML = matches.map(m => `
+                    <div class="move-dropdown-item" data-id="${m.id}" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;">
+                        <span style="display:inline-block; width:12px; height:12px; background:${TYPE_COLORS[m.type]}; border-radius:2px; margin-right:5px;"></span>
+                        ${m.nameKo} <span style="color:#888; font-size:0.8em;">(${m.category === 'physical' ? '물리' : '특수'}, 위력 ${m.power})</span>
+                    </div>
+                `).join('');
+                moveDropdown.style.display = 'block';
+            });
+
+            moveDropdown?.addEventListener('click', (e) => {
+                const item = (e.target as HTMLElement).closest('.move-dropdown-item');
+                if (item) {
+                    const id = parseInt(item.getAttribute('data-id') || '0');
+                    selectedMove = movesData.find(x => x.id === id) || null;
+                    moveDropdown.style.display = 'none';
                     renderUI();
                 }
             });
@@ -309,3 +412,4 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
 
     return () => {};
 }
+

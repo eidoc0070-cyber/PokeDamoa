@@ -131,27 +131,67 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
                         </div>
 
                         <div id="habitat-section" style="margin-top:40px; border-top: 1px solid #eee; padding-top:30px;">
-                            <h3 style="margin-top:0;">서식지 및 출현 위치 (Habitat)</h3>
-                            ${selectedPoke && selectedPoke.encounters.length > 0 ? `
-                                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
-                                    ${selectedPoke.encounters.map(enc => {
-                                        const isCurrentGen = enc.genId.toString() === currentGen.toString();
+                            <h3 style="margin-top:0; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+                                🗺️ 서식지 및 출현 위치
+                                <span style="font-weight:normal; font-size:0.8rem; color:#888;">(전체 버전 정보)</span>
+                            </h3>
+                            
+                            ${selectedPoke && selectedPoke.encounters.length > 0 ? (() => {
+                                // 세대별로 그룹화
+                                const grouped = selectedPoke.encounters.reduce((acc, enc) => {
+                                    if (!acc[enc.genId]) acc[enc.genId] = [];
+                                    acc[enc.genId].push(enc);
+                                    return acc;
+                                }, {} as Record<number, typeof selectedPoke.encounters>);
+
+                                // 세대 오름차순으로 정렬하여 렌더링
+                                return Object.entries(grouped)
+                                    .sort(([a], [b]) => Number(a) - Number(b))
+                                    .map(([genId, items]) => {
+                                        const isCurrentGen = genId.toString() === currentGen.toString();
                                         return `
-                                            <div class="encounter-card" style="padding:15px; border-radius:10px; background:${isCurrentGen ? 'rgba(237, 28, 36, 0.05)' : '#fff'}; border: 1px solid ${isCurrentGen ? '#ed1c24' : '#eee'}; opacity: ${isCurrentGen ? '1' : '0.5'}; transition: opacity 0.3s, transform 0.3s;">
-                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                                    <span style="font-weight:bold; font-size:1rem; color:${isCurrentGen ? '#ed1c24' : '#333'}">${enc.versionName}</span>
-                                                    <span style="font-size:0.8rem; background:#eee; padding:2px 6px; border-radius:4px; color:#666;">${enc.genId}세대</span>
-                                                </div>
-                                                <div style="font-size:0.9rem; color:#555; line-height:1.4;">
-                                                    ${enc.locations.join(', ')}
+                                            <div style="margin-bottom:30px; ${!isCurrentGen ? 'opacity:0.8;' : ''}">
+                                                <h4 style="margin: 0 0 12px 0; display:flex; align-items:center; gap:8px; color:${isCurrentGen ? '#ed1c24' : '#444'}; font-size:1.1rem;">
+                                                    <span style="background:${isCurrentGen ? '#ed1c24' : '#666'}; color:#fff; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:bold;">GEN ${genId}</span>
+                                                    ${genId}세대 게임 시리즈
+                                                </h4>
+                                                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:12px;">
+                                                    ${items.map(enc => `
+                                                        <div class="encounter-card" style="padding:16px; border-radius:12px; background:#fff; border: 1px solid ${isCurrentGen ? '#ed1c24' : '#eee'}; box-shadow: 0 2px 8px rgba(0,0,0,0.04); position:relative; overflow:hidden;">
+                                                            ${isCurrentGen ? `<div style="position:absolute; top:0; left:0; width:4px; height:100%; background:#ed1c24;"></div>` : ''}
+                                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                                                <span style="font-weight:bold; font-size:1rem; color:${isCurrentGen ? '#ed1c24' : '#333'}">${enc.versionName}</span>
+                                                            </div>
+                                                            <div style="font-size:0.85rem; color:#555; line-height:1.5;">
+                                                                <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                                                                    ${enc.locations.map(loc => `<span style="background:#f0f0f0; padding:2px 8px; border-radius:4px;">${loc}</span>`).join('')}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    `).join('')}
                                                 </div>
                                             </div>
                                         `;
-                                    }).join('')}
+                                    }).join('');
+                            })() : `
+                                <div style="text-align:center; padding:20px 40px; background:#f9f9f9; border-radius:12px; color:#999; border: 1px dashed #ddd; margin-bottom:20px;">
+                                    <p style="margin:0; font-style:italic;">출현 위치 정보가 없거나 야생에서 포획할 수 없는 포켓몬입니다.</p>
+                                    <p style="margin:5px 0 0 0; font-size:0.8rem;">(진화, 통신교환, 이벤트 등으로만 획득 가능할 수 있습니다)</p>
                                 </div>
-                            ` : `
-                                <p style="color:#999; font-style:italic;">출현 위치 정보가 없거나 야생에서 포획할 수 없는 포켓몬입니다.</p>
                             `}
+
+                            ${selectedPoke ? `
+                                <div style="margin-top:20px; padding:25px; background:rgba(0,164,149,0.05); border-radius:16px; border:1px solid rgba(0,164,149,0.2); text-align:center;">
+                                    <p style="margin:0 0 15px 0; font-size:0.95rem; color:#444; line-height:1.6;">
+                                        더 상세한 포획 방법이나 8·9세대의 최신 정보가 필요하시다면<br/>
+                                        나무위키의 <b>'포획'</b> 또는 <b>'획득 방법'</b> 섹션을 참고해 보세요!
+                                    </p>
+                                    <a href="https://namu.wiki/w/${encodeURIComponent(selectedPoke.nameKo)}#s-5" target="_blank" style="display:inline-block; padding:12px 24px; background:#00a495; color:#fff; text-decoration:none; border-radius:10px; font-size:1rem; font-weight:bold; box-shadow:0 4px 12px rgba(0,164,149,0.2); transition: transform 0.2s, box-shadow 0.2s;">
+                                        🌳 ${selectedPoke.nameKo} 나무위키에서 포획 정보 확인
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </div>
                         </div>
                     </div>
                 </div>
