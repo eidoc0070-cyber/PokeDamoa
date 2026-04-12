@@ -139,7 +139,7 @@ export function renderSettings(container: HTMLElement) {
 
   // PWA 안내 가이드 표시
   btnShowPwaGuide.addEventListener('click', () => {
-    forceShowPwaBanner(document.body);
+    forceShowPwaBanner();
   });
 
   // 내보내기 / 가져오기

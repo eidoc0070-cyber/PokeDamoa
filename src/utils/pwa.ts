@@ -17,15 +17,32 @@ export interface BrowserInfo {
     name: string;
     isMobile: boolean;
     isPWA: boolean;
+    isIOS: boolean;
+    isInApp: boolean;
 }
 
 export function getBrowserInfo(): BrowserInfo {
     const ua = navigator.userAgent;
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = isIOS || isAndroid;
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
 
     let type: BrowserType = 'Other';
     let name = '기타 브라우저';
+    let isInApp = false;
+
+    // 인앱 브라우저 패턴
+    const inAppPatterns = [
+        /KAKAOTALK/i,
+        /Instagram/i,
+        /FBAN|FBAV|FB_IAB/i, // Facebook
+        /Twitter/i,
+        /Line\//i,
+        /NAVER/i,
+        /TikTok/i,
+    ];
+    isInApp = inAppPatterns.some(p => p.test(ua));
 
     if (ua.includes('KAKAOTALK')) {
         type = 'Kakao';
@@ -46,11 +63,18 @@ export function getBrowserInfo(): BrowserInfo {
         type = 'Chrome';
         name = 'Chrome';
     } else if (ua.includes('Safari')) {
-        type = 'Safari';
-        name = 'Safari';
+        // iOS에서 Chrome(CriOS), Firefox(FxiOS) 등이 Safari 문자열을 포함할 수 있으므로 제외
+        if (isIOS && (ua.includes('CriOS') || ua.includes('FxiOS') || ua.includes('EdgiOS') || ua.includes('OPiOS'))) {
+            if (ua.includes('CriOS')) { type = 'Chrome'; name = 'Chrome'; }
+            else if (ua.includes('FxiOS')) { type = 'Firefox'; name = 'Firefox'; }
+            else { type = 'Other'; name = '기타 브라우저'; }
+        } else {
+            type = 'Safari';
+            name = 'Safari';
+        }
     }
 
-    return { type, name, isMobile, isPWA };
+    return { type, name, isMobile, isPWA, isIOS, isInApp };
 }
 
 export function getInstallInstructions(type: BrowserType): string[] {
