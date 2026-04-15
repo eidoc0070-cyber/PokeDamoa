@@ -1,14 +1,16 @@
 import { globalStore } from '../state/store.js';
 import { saveSettings } from '../state/storage.js';
-import { getBrowserInfo, getInstallInstructions } from '../utils/pwa.js';
+import { getBrowserInfo, getInstallInstructions, shareToOpenExternal } from '../utils/pwa.js';
 import type { BrowserType } from '../utils/pwa.js';
 
 export function initPwaBanner(container: HTMLElement) {
-    const { type, name, isMobile, isPWA } = getBrowserInfo();
+    const { type, name, isMobile, isPWA, isIOS, isInApp } = getBrowserInfo();
     const state = globalStore.getState();
 
-    // 팝업 표시 조건 체크
-    const shouldShow = isMobile && !isPWA && !state.pwaGuideDismissed && state.visitCount >= 2;
+    // 팝업 표시 조건 체크:
+    // 1. iOS인데 Safari가 아니거나, 2. 인앱 브라우저(카톡, 인스타 등)이거나, 3. 일반 방문 2회 이상 시
+    const isSpecialCase = (isIOS && type !== 'Safari') || isInApp;
+    const shouldShow = (isSpecialCase || state.visitCount >= 2) && isMobile && !isPWA && !state.pwaGuideDismissed;
 
     if (!shouldShow) return;
 
@@ -20,6 +22,7 @@ export function forceShowPwaBanner() {
 }
 
 function renderBanner(container: HTMLElement, detectedType: BrowserType, detectedName: string) {
+    const { isIOS, isInApp } = getBrowserInfo();
     // 이미 존재하는 배너 제거
     const existing = document.getElementById('pwa-install-banner');
     if (existing) existing.remove();
@@ -31,54 +34,62 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         top: 0;
         left: 0;
         width: 100%;
-        background: var(--primary-color, #2196f3);
+        background: var(--primary-color, #ffcb05);
         color: #333;
-        padding: 10px 15px;
+        padding: 12px 15px;
         z-index: 10000;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        font-size: 0.9rem;
+        gap: 10px;
+        font-size: 0.95rem;
         box-sizing: border-box;
-        transition: transform 0.3s ease-in-out;
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         transform: translateY(-100%);
+        border-bottom: 2px solid rgba(0,0,0,0.1);
     `;
 
     const content = document.createElement('div');
     content.style.cssText = `
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
     `;
 
     const text = document.createElement('div');
-    text.innerHTML = `<strong>${detectedName}</strong>으로 설치하는 방법을 알려드릴까요?`;
+    if (isInApp) {
+        text.innerHTML = `<strong>인앱 브라우저</strong>에서는 설치가 불가능합니다. <br><small>설치하시려면 외부 브라우저로 이동하세요.</small>`;
+    } else if (isIOS && detectedType !== 'Safari') {
+        text.innerHTML = `<strong>Safari</strong>로 접속하시면 앱처럼 설치할 수 있습니다!`;
+    } else {
+        text.innerHTML = `<strong>${detectedName}</strong>으로 설치하는 방법을 알려드릴까요?`;
+    }
     
-    const timerDisplay = document.createElement('span');
-    timerDisplay.style.marginLeft = '10px';
-    timerDisplay.style.fontSize = '0.8rem';
-    timerDisplay.style.opacity = '0.8';
+    const timerDisplay = document.createElement('div');
+    timerDisplay.style.fontSize = '0.75rem';
+    timerDisplay.style.opacity = '0.6';
+    timerDisplay.style.marginTop = '4px';
 
     const buttons = document.createElement('div');
     buttons.style.cssText = `
         display: flex;
-        gap: 10px;
+        gap: 8px;
         justify-content: flex-end;
     `;
 
-    const btnYes = createButton('네, 알려주세요', '#fff', '#333');
-    const btnOthers = createButton('다른 브라우저 방법 보기', 'rgba(0,0,0,0.05)', '#333', true);
+    const mainBtnText = isInApp || (isIOS && detectedType !== 'Safari') ? '브라우저 이동/설치' : '설치 방법 보기';
+    const btnMain = createButton(mainBtnText, '#333', '#fff');
+    const btnOthers = createButton('닫기', 'rgba(0,0,0,0.05)', '#333', true);
     const btnClose = document.createElement('button');
     btnClose.innerHTML = '&times;';
     btnClose.style.cssText = `
         background: none;
         border: none;
         color: #333;
-        font-size: 1.5rem;
+        font-size: 1.6rem;
         cursor: pointer;
         padding: 0 5px;
-        line-height: 1;
+        line-height: 0.8;
     `;
 
     text.appendChild(timerDisplay);
@@ -86,7 +97,7 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     content.appendChild(btnClose);
     
     buttons.appendChild(btnOthers);
-    buttons.appendChild(btnYes);
+    buttons.appendChild(btnMain);
     
     banner.appendChild(content);
     banner.appendChild(buttons);
@@ -97,16 +108,16 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         banner.style.transform = 'translateY(0)';
     }, 100);
 
-    let timeLeft = 15; // 15초 타이머
+    let timeLeft = 15;
     const updateTimer = () => {
-        timerDisplay.textContent = `(${timeLeft}초 후 닫힘)`;
+        timerDisplay.textContent = `${timeLeft}초 후 자동 닫힘`;
     };
     updateTimer();
 
     const timerInterval = setInterval(() => {
         timeLeft--;
         if (timeLeft <= 0) {
-            closeBanner();
+            closeBanner(false); 
         } else {
             updateTimer();
         }
@@ -117,28 +128,29 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         banner.style.transform = 'translateY(-100%)';
         setTimeout(() => {
             banner.remove();
-        }, 300);
+        }, 400);
 
         if (permanently) {
             const state = globalStore.getState();
             globalStore.setState({ pwaGuideDismissed: true });
-            saveSettings({
-                ...state,
-                pwaGuideDismissed: true
-            });
+            saveSettings({ ...state, pwaGuideDismissed: true });
         }
     };
 
     btnClose.onclick = () => closeBanner(true);
+    btnOthers.onclick = () => closeBanner(true);
 
-    btnYes.onclick = () => {
-        closeBanner(true);
-        renderPwaModal(detectedType);
-    };
-
-    btnOthers.onclick = () => {
-        closeBanner(true);
-        renderPwaModal();
+    btnMain.onclick = () => {
+        if (isInApp) {
+            closeBanner(true);
+            renderPwaModal(isIOS ? 'Safari' : 'Chrome'); 
+        } else if (isIOS && detectedType !== 'Safari') {
+            closeBanner(true);
+            renderPwaModal('Safari');
+        } else {
+            closeBanner(true);
+            renderPwaModal(detectedType);
+        }
     };
 }
 
@@ -146,14 +158,15 @@ function createButton(text: string, bg: string, color: string, isOutline = false
     const btn = document.createElement('button');
     btn.textContent = text;
     btn.style.cssText = `
-        padding: 6px 12px;
-        border-radius: 4px;
-        border: ${isOutline ? '1px solid #333' : 'none'};
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: ${isOutline ? '1px solid rgba(0,0,0,0.2)' : 'none'};
         background: ${bg};
         color: ${color};
         font-weight: bold;
         cursor: pointer;
         font-size: 0.85rem;
+        box-shadow: ${isOutline ? 'none' : '0 2px 4px rgba(0,0,0,0.1)'};
     `;
     return btn;
 }
@@ -167,12 +180,12 @@ export function renderPwaModal(initialType?: BrowserType) {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0,0,0,0.6);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 10001;
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(5px);
     `;
 
     const modal = document.createElement('div');
@@ -180,14 +193,14 @@ export function renderPwaModal(initialType?: BrowserType) {
         background: var(--bg-color, #fff);
         color: var(--text-color, #333);
         width: 90%;
-        max-width: 500px;
+        max-width: 480px;
         max-height: 85vh;
-        border-radius: 16px;
+        border-radius: 20px;
         padding: 25px;
         display: flex;
         flex-direction: column;
         gap: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.4);
         position: relative;
         overflow-y: auto;
     `;
@@ -200,7 +213,7 @@ export function renderPwaModal(initialType?: BrowserType) {
     };
 
     const renderBrowserList = () => {
-        const { type: detectedType } = getBrowserInfo();
+        const { type: detectedType, isIOS, isInApp } = getBrowserInfo();
         const browserList: { type: BrowserType, name: string }[] = [
             { type: 'Chrome', name: 'Chrome' },
             { type: 'Safari', name: 'Safari' },
@@ -209,26 +222,23 @@ export function renderPwaModal(initialType?: BrowserType) {
             { type: 'Firefox', name: 'Firefox' }
         ];
 
-        // 감지된 브라우저를 맨 위로 정렬
-        browserList.sort((a, b) => {
-            if (a.type === detectedType) return -1;
-            if (b.type === detectedType) return 1;
-            return 0;
-        });
-
         modal.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h2 style="margin:0; font-size:1.3rem;">PWA 설치 방법 안내</h2>
-                <button id="pwa-modal-close" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color:inherit;">&times;</button>
+                <h2 style="margin:0; font-size:1.4rem; letter-spacing:-0.5px;">PWA 설치 안내</h2>
+                <button id="pwa-modal-close" style="background:none; border:none; font-size:2rem; cursor:pointer; color:inherit; line-height:0.5;">&times;</button>
             </div>
-            <p style="margin:0; font-size:0.95rem; color:#666;">사용 중인 브라우저를 선택하여 설치 방법을 확인하세요.</p>
-            <div style="display:flex; flex-direction:column; gap:10px; margin-top:5px;">
-                ${browserList.map(b => `
+            <p style="margin:0; font-size:0.95rem; color:#666; line-height:1.5;">
+                ${isInApp ? '카카오톡/인스타그램 같은 <strong>인앱 브라우저</strong>에서는 설치가 불가능합니다.' : (isIOS ? '아이폰은 <strong>Safari</strong>를 이용해야 앱 설치가 가능합니다.' : '브라우저를 선택하여 설치 방법을 확인하세요.')}
+            </p>
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:5px;">
+                ${browserList.map(b => {
+                    const isRecommended = (isIOS && b.type === 'Safari') || (!isIOS && b.type === 'Chrome');
+                    return `
                     <button class="browser-btn" data-type="${b.type}" data-name="${b.name}" style="
-                        padding: 15px;
-                        border-radius: 12px;
-                        border: 1px solid #ddd;
-                        background: ${b.type === detectedType ? 'rgba(255, 203, 5, 0.1)' : 'transparent'};
+                        padding: 18px;
+                        border-radius: 14px;
+                        border: 1px solid #eee;
+                        background: ${isRecommended ? 'rgba(255, 203, 5, 0.15)' : 'rgba(0,0,0,0.02)'};
                         color: inherit;
                         font-weight: bold;
                         font-size: 1.05rem;
@@ -236,12 +246,13 @@ export function renderPwaModal(initialType?: BrowserType) {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        text-align: left;
+                        transition: all 0.2s;
                     ">
-                        <span>${b.name} ${b.type === detectedType ? '<small style="color:#d32f2f; margin-left:5px;">(감지됨)</small>' : ''}</span>
-                        <span style="font-size:0.8rem; opacity:0.5;">▶</span>
+                        <span>${b.name} ${isRecommended ? '<small style="color:#d32f2f; margin-left:5px;">(권장)</small>' : ''}</span>
+                        <span style="font-size:0.9rem; opacity:0.3;">▶</span>
                     </button>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
 
@@ -256,31 +267,73 @@ export function renderPwaModal(initialType?: BrowserType) {
     };
 
     const renderInstructions = (type: BrowserType, name: string) => {
+        const { isIOS, type: detectedType, isInApp } = getBrowserInfo();
         const instructions = getInstallInstructions(type);
+        
+        const needsExternal = (isIOS && detectedType !== 'Safari') || isInApp;
+        const targetBrowserName = isIOS ? 'Safari' : 'Chrome/외부 브라우저';
+
         modal.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2 style="margin:0; font-size:1.3rem;">${name} 설치 방법</h2>
-                <button id="pwa-modal-close" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color:inherit;">&times;</button>
+                <button id="pwa-modal-close" style="background:none; border:none; font-size:2rem; cursor:pointer; color:inherit; line-height:0.5;">&times;</button>
             </div>
             <div style="flex:1; margin-top:10px;">
-                <ul style="padding-left:20px; line-height:1.8; font-size:1rem;">
-                    ${instructions.map(i => `<li style="margin-bottom:10px;">${i}</li>`).join('')}
+                <ul style="padding-left:20px; line-height:1.7; font-size:0.95rem;">
+                    ${instructions.map(i => `<li style="margin-bottom:8px;">${i}</li>`).join('')}
                 </ul>
-                ${(type === 'Kakao' || type === 'Instagram') ? '' : `
-                    <p style="font-size:0.85rem; color:#888; margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
+                ${needsExternal ? `
+                    <div style="margin-top:25px; background:#f9f9f9; padding:20px; border-radius:15px; border:1px solid #eee;">
+                        <p style="margin:0 0 12px 0; font-size:0.9rem; font-weight:bold; color:#d32f2f;">잠깐! 외부 브라우저를 이용해 주세요.</p>
+                        <p style="margin:0 0 15px 0; font-size:0.85rem; color:#666; line-height:1.4;">
+                            현재 브라우저에서는 앱 설치가 제한적일 수 있습니다. <br>
+                            아래 버튼을 눌러 <strong>${targetBrowserName}</strong>(으)로 이동하면 원활하게 설치할 수 있습니다.<br>
+                            <small style="color:#999; display:block; margin-top:5px;">* 누구에게도 전송되지 않으니 안심하세요!</small>
+                        </p>
+                        <button id="pwa-share-btn" style="width:100%; padding:14px; border-radius:10px; border:none; background:#333; color:#fff; font-weight:bold; cursor:pointer; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <span>${targetBrowserName}로 이동하기</span>
+                            <span style="font-size:1.1rem;">↗</span>
+                        </button>
+                        <p id="pwa-share-status" style="margin-top:8px; font-size:0.8rem; text-align:center; display:none;"></p>
+                    </div>
+                ` : `
+                    <p style="font-size:0.85rem; color:#888; margin-top:20px; border-top:1px dashed #eee; padding-top:15px;">
                         * 설치 후에는 홈 화면에서 아이콘을 눌러 바로 접속할 수 있습니다.
                     </p>
                 `}
             </div>
-            <div style="margin-top:10px; display:flex; gap:10px;">
-                <button id="pwa-modal-back" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd; background:#f5f5f5; color:#333; font-weight:bold; cursor:pointer;">목록으로</button>
-                <button id="pwa-modal-close-btn" style="flex:1; padding:12px; border-radius:8px; border:none; background:var(--primary-color, #ffcb05); color:#333; font-weight:bold; cursor:pointer;">닫기</button>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button id="pwa-modal-back" style="flex:1; padding:12px; border-radius:10px; border:1px solid #ddd; background:#f5f5f5; color:#333; font-weight:bold; cursor:pointer;">목록으로</button>
+                <button id="pwa-modal-close-btn" style="flex:1; padding:12px; border-radius:10px; border:none; background:var(--primary-color, #ffcb05); color:#333; font-weight:bold; cursor:pointer;">확인</button>
             </div>
         `;
 
         modal.querySelector('#pwa-modal-close')?.addEventListener('click', closePwaModal);
         modal.querySelector('#pwa-modal-close-btn')?.addEventListener('click', closePwaModal);
         modal.querySelector('#pwa-modal-back')?.addEventListener('click', renderBrowserList);
+
+        const shareBtn = modal.querySelector('#pwa-share-btn');
+        const statusText = modal.querySelector('#pwa-share-status') as HTMLElement;
+
+        shareBtn?.addEventListener('click', async () => {
+            const result = await shareToOpenExternal();
+            
+            if (statusText) statusText.style.display = 'block';
+
+            if (result === 'shared') {
+                statusText.textContent = `공유창에서 ${targetBrowserName}를 선택해 주세요.`;
+                statusText.style.color = '#2196f3';
+            } else if (result === 'copied') {
+                statusText.textContent = '주소가 복사되었습니다! 외부 브라우저를 열고 붙여넣어 주세요.';
+                statusText.style.color = '#4caf50';
+            } else if (result === 'cancelled') {
+                statusText.textContent = '공유가 취소되었습니다.';
+                statusText.style.color = '#f44336';
+            } else {
+                statusText.textContent = '이동에 실패했습니다. 직접 주소를 복사해 주세요.';
+                statusText.style.color = '#f44336';
+            }
+        });
     };
 
     if (initialType) {
@@ -302,7 +355,6 @@ export function renderPwaModal(initialType?: BrowserType) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // ESC 키로 닫기
     const escListener = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             closePwaModal();

@@ -117,3 +117,57 @@ export function getInstallInstructions(type: BrowserType): string[] {
             ];
     }
 }
+
+/**
+ * 텍스트를 클립보드에 복사합니다.
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return successful;
+        }
+    } catch (err) {
+        console.error('클립보드 복사 실패:', err);
+        return false;
+    }
+}
+
+/**
+ * Web Share API를 사용하여 공유 시트를 엽니다.
+ * 실패 시 클립보드 복사로 폴백합니다.
+ */
+export async function shareToOpenExternal(): Promise<'shared' | 'copied' | 'cancelled' | 'failed'> {
+    const url = window.location.href;
+    const title = document.title || '포케다모아';
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title,
+                url
+            });
+            return 'shared';
+        } catch (err: any) {
+            if (err.name === 'AbortError') {
+                return 'cancelled';
+            }
+            console.warn('Web Share API 실패, 클립보드 복사로 전환:', err);
+        }
+    }
+
+    const copied = await copyToClipboard(url);
+    return copied ? 'copied' : 'failed';
+}
