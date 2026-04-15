@@ -3,6 +3,7 @@ import type { PokemonData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
 import { getQueryParams, updateQueryParams } from '../../state/url-params.js';
 import { globalStore } from '../../state/store.js';
+import { hangulIncludes } from '../../utils/hangul.js';
 
 export async function renderCatchCalculator(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `
@@ -213,7 +214,7 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
                     dropdown.style.display = 'none';
                     return;
                 }
-                const matches = fullData.filter(p => p.nameKo.includes(term) || p.nameEn.toLowerCase().includes(term)).slice(0, 50);
+                const matches = fullData.filter(p => hangulIncludes(p.searchKey, term)).slice(0, 50);
                 dropdown.innerHTML = matches.map(m => `
                     <div class="dropdown-item" data-id="${m.id}" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;">
                         ${m.nameKo} <span style="color:#888; font-size:0.8em;">(${m.nameEn})</span>

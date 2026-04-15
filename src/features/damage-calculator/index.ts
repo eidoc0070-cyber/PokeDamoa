@@ -3,6 +3,7 @@ import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO, TYPE_MATCHUPS, POKEMON_TYPES } from '../../data/constants.js';
 import type { PokemonType } from '../../data/constants.js';
 import { calculateStat, calculateBaseDamage, calculateDamageRolls, calculateTypeMultiplier } from '../../utils/pokemon-math.js';
+import { hangulIncludes } from '../../utils/hangul.js';
 
 export async function renderDamageCalculator(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `
@@ -415,7 +416,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             atkSearch?.addEventListener('input', () => {
                 const term = atkSearch.value.toLowerCase();
                 if (!term) { atkDrop.style.display = 'none'; return; }
-                const matches = fullPokes.filter(p => p.nameKo.includes(term) || p.nameEn.toLowerCase().includes(term)).slice(0, 30);
+                const matches = fullPokes.filter(p => hangulIncludes(p.searchKey, term)).slice(0, 30);
                 atkDrop.innerHTML = matches.map(m => `<div class="dropdown-item" data-id="${m.id}" style="padding:8px; cursor:pointer; border-bottom:1px solid #eee;">${m.nameKo}</div>`).join('');
                 atkDrop.style.display = 'block';
             });
@@ -440,7 +441,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             defSearch?.addEventListener('input', () => {
                 const term = defSearch.value.toLowerCase();
                 if (!term) { defDrop.style.display = 'none'; return; }
-                const matches = fullPokes.filter(p => p.nameKo.includes(term) || p.nameEn.toLowerCase().includes(term)).slice(0, 30);
+                const matches = fullPokes.filter(p => hangulIncludes(p.searchKey, term)).slice(0, 30);
                 defDrop.innerHTML = matches.map(m => `<div class="dropdown-item" data-id="${m.id}" style="padding:8px; cursor:pointer; border-bottom:1px solid #eee;">${m.nameKo}</div>`).join('');
                 defDrop.style.display = 'block';
             });
@@ -465,7 +466,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             moveSearch?.addEventListener('input', () => {
                 const term = moveSearch.value.toLowerCase();
                 if (!term) { moveDrop.style.display = 'none'; return; }
-                const matches = fullMoves.filter(m => m.power > 0 && (m.nameKo.includes(term) || m.nameEn.toLowerCase().includes(term))).slice(0, 30);
+                const matches = fullMoves.filter(m => m.power > 0 && hangulIncludes(m.searchKey, term)).slice(0, 30);
                 moveDrop.innerHTML = matches.map(m => `<div class="dropdown-item" data-id="${m.id}" style="padding:8px; cursor:pointer; border-bottom:1px solid #eee;">${m.nameKo} <span style="font-size:0.8em; color:#888;">(위력: ${m.power})</span></div>`).join('');
                 moveDrop.style.display = 'block';
             });

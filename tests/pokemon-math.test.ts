@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
-import { calculateStat, calculateBaseDamage, calculateDamageRolls, calculateTypeMultiplier } from './pokemon-math';
+import { calculateStat, calculateBaseDamage, calculateDamageRolls, calculateTypeMultiplier } from '../src/utils/pokemon-math';
 
 describe('pokemon-math utility', () => {
   describe('calculateStat', () => {

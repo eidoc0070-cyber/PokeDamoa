@@ -5,6 +5,7 @@ export interface PokemonData {
     speciesId: number;
     nameKo: string;
     nameEn: string;
+    searchKey: string;
     types: PokemonType[];
     stats: { hp: number; atk: number; def: number; spa: number; spd: number; spe: number };
     genId: number;
@@ -17,6 +18,7 @@ export interface MoveData {
     id: number;
     nameKo: string;
     nameEn: string;
+    searchKey: string;
     power: number;
     type: PokemonType;
     category: 'status' | 'physical' | 'special';

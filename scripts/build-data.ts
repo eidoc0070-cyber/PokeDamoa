@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { disassembleHangul } from './utils/hangul.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -247,11 +248,15 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       // 출현 위치 정보 추가
       const encounters = pokemonEncountersMap.get(id) || [];
 
+      const { disassembled, initialConsonants } = disassembleHangul(nameKo);
+      const searchKey = `${nameKo}|${p.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
+
       finalPokedex.push({
         id,
         speciesId,
         nameKo,
         nameEn: p.identifier,
+        searchKey,
         types,
         stats,
         genId,
@@ -288,10 +293,14 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       if (damageClassId === 2) category = 'physical';
       if (damageClassId === 3) category = 'special';
 
+      const { disassembled, initialConsonants } = disassembleHangul(nameKo);
+      const searchKey = `${nameKo}|${m.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
+
       finalMoves.push({
         id,
         nameKo,
         nameEn: m.identifier,
+        searchKey,
         power,
         type: typeName,
         category

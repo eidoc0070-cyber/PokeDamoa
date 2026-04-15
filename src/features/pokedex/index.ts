@@ -1,6 +1,7 @@
 import { fetchPokedexData } from '../../data/pokeapi.js';
 import type { PokemonData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
+import { hangulIncludes } from '../../utils/hangul.js';
 
 export async function renderPokedex(container: HTMLElement): Promise<() => void> {
     // 임시 로딩 UI
@@ -78,7 +79,7 @@ export async function renderPokedex(container: HTMLElement): Promise<() => void>
 
         const updateList = () => {
             filteredData = fullData.filter(p => {
-                if (searchTerm && !p.nameKo.includes(searchTerm) && !p.nameEn.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+                if (searchTerm && !hangulIncludes(p.searchKey, searchTerm)) return false;
                 if (!showAllForms && !p.isDefault) return false;
                 return true;
             });

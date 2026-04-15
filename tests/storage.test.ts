@@ -2,8 +2,25 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { saveSettings, loadSettings, savePreset, loadPresets, deletePreset, SETTINGS_KEY } from './storage';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { saveSettings, loadSettings, savePreset, loadPresets, deletePreset, SETTINGS_KEY } from '../src/state/storage';
+
+// localStorage mock for environments where it's not fully provided
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => { store[key] = value.toString(); },
+    clear: () => { store = {}; },
+    removeItem: (key: string) => { delete store[key]; },
+    key: (index: number) => Object.keys(store)[index] || null,
+    get length() { return Object.keys(store).length; }
+  };
+})();
+
+if (typeof localStorage === 'undefined' || typeof localStorage.clear === 'undefined') {
+    Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
+}
 
 describe('storage utility', () => {
   beforeEach(() => {
@@ -17,7 +34,7 @@ describe('storage utility', () => {
         isCustomMode: false,
         generation: 9 as const
       };
-      saveSettings(settings);
+      saveSettings(settings as any);
       
       const loaded = loadSettings();
       expect(loaded).toEqual(settings);

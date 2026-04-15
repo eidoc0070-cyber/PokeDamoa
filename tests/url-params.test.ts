@@ -2,19 +2,45 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getTabFromPath, restoreStateFromUrl } from './url-params';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { getTabFromPath, restoreStateFromUrl } from '../src/state/url-params';
+
+// Mock window/location for non-browser environments like bun test
+if (typeof window === 'undefined') {
+    (globalThis as any).window = globalThis;
+}
+
+// Helper for mocking location
+const mockLocation = (pathname: string) => {
+  if (typeof vi !== 'undefined' && vi.stubGlobal) {
+    vi.stubGlobal('location', { pathname });
+  } else {
+    // Fallback for non-vitest environments like bun test
+    // @ts-ignore
+    globalThis.location = { pathname } as any;
+  }
+};
 
 describe('url-params utility', () => {
+  const originalLocation = typeof globalThis !== 'undefined' ? globalThis.location : undefined;
+
+  afterEach(() => {
+    if (typeof vi !== 'undefined' && vi.unstubAllGlobals) {
+        vi.unstubAllGlobals();
+    } else if (originalLocation) {
+        // @ts-ignore
+        globalThis.location = originalLocation;
+    }
+  });
+
   describe('getTabFromPath', () => {
     it('should return the tab name from the path', () => {
-      // Mock window.location
-      vi.stubGlobal('location', { pathname: '/damage-calculator' });
+      mockLocation('/damage-calculator');
       expect(getTabFromPath()).toBe('damage-calculator');
     });
 
     it('should return default "settings" for root path', () => {
-      vi.stubGlobal('location', { pathname: '/' });
+      mockLocation('/');
       expect(getTabFromPath()).toBe('settings');
     });
   });

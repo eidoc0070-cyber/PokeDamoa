@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { processData } from './build-data';
+import { processData } from '../scripts/build-data';
 
 // We'll use the actual data for testing but write to a temp file
 const TEMP_OUTPUT = path.resolve(__dirname, '../public/pokedex-data-test.json');

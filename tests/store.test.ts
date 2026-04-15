@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi } from 'vitest';
-import { Store } from './store';
+import { Store } from '../src/state/store';
 
 describe('Store', () => {
   it('should initialize with initial state', () => {
