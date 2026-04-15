@@ -22,7 +22,7 @@ export function forceShowPwaBanner() {
 }
 
 function renderBanner(container: HTMLElement, detectedType: BrowserType, detectedName: string) {
-    const { isIOS, isInApp } = getBrowserInfo();
+    const { isIOS, isInApp, type } = getBrowserInfo();
     // 이미 존재하는 배너 제거
     const existing = document.getElementById('pwa-install-banner');
     if (existing) existing.remove();
@@ -57,10 +57,10 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     `;
 
     const text = document.createElement('div');
-    if (isInApp) {
-        text.innerHTML = `<strong>인앱 브라우저</strong>에서는 설치가 불가능합니다. <br><small>설치하시려면 외부 브라우저로 이동하세요.</small>`;
-    } else if (isIOS && detectedType !== 'Safari') {
-        text.innerHTML = `<strong>Safari</strong>로 접속하시면 앱처럼 설치할 수 있습니다!`;
+    if (isIOS && type !== 'Safari') {
+        text.innerHTML = `<strong>아이폰</strong>은 <strong>Safari</strong>에서만 앱 설치가 가능합니다. <br><small>Safari로 이동하여 설치하시겠습니까?</small>`;
+    } else if (isInApp) {
+        text.innerHTML = `<strong>인앱 브라우저</strong>에서는 설치가 불가능합니다. <br><small>외부 브라우저로 이동하여 설치해 보세요.</small>`;
     } else {
         text.innerHTML = `<strong>${detectedName}</strong>으로 설치하는 방법을 알려드릴까요?`;
     }
@@ -70,6 +70,14 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     timerDisplay.style.opacity = '0.6';
     timerDisplay.style.marginTop = '4px';
 
+    const statusMessage = document.createElement('div');
+    statusMessage.style.cssText = `
+        font-size: 0.8rem;
+        font-weight: bold;
+        display: none;
+        margin-top: 5px;
+    `;
+
     const buttons = document.createElement('div');
     buttons.style.cssText = `
         display: flex;
@@ -77,9 +85,14 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         justify-content: flex-end;
     `;
 
-    const mainBtnText = isInApp || (isIOS && detectedType !== 'Safari') ? '브라우저 이동/설치' : '설치 방법 보기';
-    const btnMain = createButton(mainBtnText, '#333', '#fff');
-    const btnOthers = createButton('닫기', 'rgba(0,0,0,0.05)', '#333', true);
+    // 1. 외부 브라우저 이동 버튼
+    const targetBrowserName = isIOS ? 'Safari' : '외부 브라우저';
+    const btnGoExternal = createButton(`${targetBrowserName}로 이동`, '#333', '#fff');
+    
+    // 2. 설치 방법 보기 버튼
+    const btnShowGuide = createButton('설치 방법 보기', 'rgba(255,255,255,0.6)', '#333', true);
+    
+    // 3. 닫기 버튼 (X)
     const btnClose = document.createElement('button');
     btnClose.innerHTML = '&times;';
     btnClose.style.cssText = `
@@ -93,11 +106,12 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     `;
 
     text.appendChild(timerDisplay);
+    text.appendChild(statusMessage);
     content.appendChild(text);
     content.appendChild(btnClose);
     
-    buttons.appendChild(btnOthers);
-    buttons.appendChild(btnMain);
+    buttons.appendChild(btnShowGuide);
+    buttons.appendChild(btnGoExternal);
     
     banner.appendChild(content);
     banner.appendChild(buttons);
@@ -108,7 +122,7 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         banner.style.transform = 'translateY(0)';
     }, 100);
 
-    let timeLeft = 15;
+    let timeLeft = 20; // 안내 배너는 조금 더 길게 유지
     const updateTimer = () => {
         timerDisplay.textContent = `${timeLeft}초 후 자동 닫힘`;
     };
@@ -138,19 +152,28 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     };
 
     btnClose.onclick = () => closeBanner(true);
-    btnOthers.onclick = () => closeBanner(true);
 
-    btnMain.onclick = () => {
-        if (isInApp) {
-            closeBanner(true);
-            renderPwaModal(isIOS ? 'Safari' : 'Chrome'); 
-        } else if (isIOS && detectedType !== 'Safari') {
-            closeBanner(true);
-            renderPwaModal('Safari');
-        } else {
-            closeBanner(true);
-            renderPwaModal(detectedType);
+    // 외부 브라우저 이동 로직
+    btnGoExternal.onclick = async () => {
+        const result = await shareToOpenExternal();
+        statusMessage.style.display = 'block';
+        
+        if (result === 'shared') {
+            statusMessage.textContent = `↗ 공유창에서 ${targetBrowserName}를 선택하세요!`;
+            statusMessage.style.color = '#0056b3';
+        } else if (result === 'copied') {
+            statusMessage.textContent = '✓ 주소 복사 완료! 브라우저에 붙여넣어 주세요.';
+            statusMessage.style.color = '#1e7e34';
+            setTimeout(() => closeBanner(true), 3000);
+        } else if (result === 'cancelled') {
+            statusMessage.style.display = 'none';
         }
+    };
+
+    // 가이드 모달 띄우기
+    btnShowGuide.onclick = () => {
+        closeBanner(true);
+        renderPwaModal(isIOS ? 'Safari' : detectedType);
     };
 }
 

@@ -211,13 +211,17 @@ export function renderSettings(container: HTMLElement) {
             <p style="color:#666; font-size:0.9rem; margin:0;">드래그하여 순서를 변경하고, 이름을 수정하거나 숨길 수 있습니다.</p>
             
             <div id="modal-tab-list" style="display:flex; flex-direction:column; gap:10px; overflow-y:auto; padding-right:5px;">
-                ${currentTabs.map((tab, index) => `
-                    <div class="modal-tab-item" data-id="${tab.id}" data-index="${index}" style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #eee; border-radius:8px; background: ${tab.isVisible ? 'transparent' : 'rgba(0,0,0,0.05)'}; transition: background 0.2s;">
-                        <div class="drag-handle" style="cursor:grab; color:#ccc; font-size:1.2rem; user-select:none; padding:0 5px;">☰</div>
-                        <input type="checkbox" class="tab-visibility" data-id="${tab.id}" ${tab.isVisible ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;" />
-                        <input type="text" class="tab-name-input" data-id="${tab.id}" value="${tab.currentName}" style="flex:1; padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:0.95rem; ${!tab.isVisible ? 'color:#999; background:#f9f9f9;' : ''}" />
-                    </div>
-                `).join('')}
+                ${currentTabs.map((tab, index) => {
+                    const isSettings = tab.id === 'settings';
+                    return `
+                        <div class="modal-tab-item" data-id="${tab.id}" data-index="${index}" style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #eee; border-radius:8px; background: ${tab.isVisible ? 'transparent' : 'rgba(0,0,0,0.05)'}; transition: background 0.2s;">
+                            <div class="drag-handle" style="cursor:grab; color:#ccc; font-size:1.2rem; user-select:none; padding:0 5px;">☰</div>
+                            <input type="checkbox" class="tab-visibility" data-id="${tab.id}" ${tab.isVisible || isSettings ? 'checked' : ''} ${isSettings ? 'disabled' : ''} style="width:18px; height:18px; cursor:pointer;" />
+                            <input type="text" class="tab-name-input" data-id="${tab.id}" value="${tab.currentName}" ${isSettings ? 'readonly' : ''} style="flex:1; padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:0.95rem; ${!tab.isVisible && !isSettings ? 'color:#999; background:#f9f9f9;' : ''} ${isSettings ? 'background:#f0f0f0; border-color:#ccc; cursor:not-allowed;' : ''}" />
+                            ${isSettings ? '<span style="font-size:0.8rem; color:#999; white-space:nowrap;">(필수)</span>' : ''}
+                        </div>
+                    `;
+                }).join('')}
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:15px; border-top:1px solid #eee;">
