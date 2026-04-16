@@ -9,18 +9,42 @@ const __dirname = path.dirname(__filename);
 const DEFAULT_CSV_DIR = path.resolve(__dirname, '../public/pokeapi/pokeapi-master/data/v2/csv');
 const DEFAULT_OUTPUT_FILE = path.resolve(__dirname, '../public/pokedex-data.json');
 const DEFAULT_MOVES_OUTPUT_FILE = path.resolve(__dirname, '../public/moves-data.json');
+const DEFAULT_ABILITIES_OUTPUT_FILE = path.resolve(__dirname, '../public/abilities-data.json');
+const DEFAULT_ITEMS_OUTPUT_FILE = path.resolve(__dirname, '../public/items-data.json');
 
 // 매우 단순한 CSV 파서 (현재 대상 파일들은 내부에 쉼표(,)가 없음을 전제)
 function parseCSV(csvDir: string, filename: string) {
   const filePath = path.join(csvDir, filename);
-  if (!fs.existsSync(filePath)) return [];
+  if (!fs.existsSync(filePath)) {
+    console.warn(`파일을 찾을 수 없습니다: ${filePath}`);
+    return [];
+  }
   const content = fs.readFileSync(filePath, 'utf-8');
+  // 따옴표 내의 쉼표를 처리하기 위한 복잡한 정규식 대신, 
+  // 포켓몬 CSV 특성상 따옴표로 감싸진 필드가 있을 수 있으므로 처리 개선
   const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return [];
+
   const headers = lines[0].split(',');
   const results: any[] = [];
+
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',');
+    // 쉼표로 분리하되 따옴표 내부의 쉼표는 무시하는 간단한 처리
+    const row = lines[i];
+    const cols: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let char of row) {
+      if (char === '"') inQuotes = !inQuotes;
+      else if (char === ',' && !inQuotes) {
+        cols.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    cols.push(current);
+
     const obj: any = {};
     headers.forEach((h, idx) => {
       obj[h] = cols[idx] !== undefined ? cols[idx] : '';
@@ -46,8 +70,18 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const pokemonTypesList = parseCSV(csvDir, 'pokemon_types.csv');
     const typesList = parseCSV(csvDir, 'types.csv');
     const pokemonStatsList = parseCSV(csvDir, 'pokemon_stats.csv');
+    
     const movesList = parseCSV(csvDir, 'moves.csv');
     const moveNamesList = parseCSV(csvDir, 'move_names.csv');
+    const moveEffectProseList = parseCSV(csvDir, 'move_effect_prose.csv');
+
+    const abilitiesList = parseCSV(csvDir, 'abilities.csv');
+    const abilityNamesList = parseCSV(csvDir, 'ability_names.csv');
+    const abilityProseList = parseCSV(csvDir, 'ability_prose.csv');
+
+    const itemsList = parseCSV(csvDir, 'items.csv');
+    const itemNamesList = parseCSV(csvDir, 'item_names.csv');
+    const itemProseList = parseCSV(csvDir, 'item_prose.csv');
     
     // 출현 위치 정보를 위한 CSV 파싱
     const encountersList = parseCSV(csvDir, 'encounters.csv');
@@ -278,16 +312,24 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       }
     });
 
+    const moveEffectMap = new Map<number, string>();
+    moveEffectProseList.forEach(mep => {
+      if (mep.local_language_id === '3') {
+        moveEffectMap.set(parseInt(mep.move_effect_id), mep.short_effect || mep.effect);
+      }
+    });
+
     const finalMoves: any[] = [];
     movesList.forEach(m => {
       const id = parseInt(m.id);
       const power = parseInt(m.power) || 0;
       const typeId = parseInt(m.type_id);
       const damageClassId = parseInt(m.damage_class_id); // 1=status, 2=physical, 3=special
+      const effectId = parseInt(m.effect_id);
       
-      // 공격기가 아닌 경우 (변화기)는 결정력 계산기에서 불필요하지만 혹시 모르니 남김 (power가 0인 것으로 구분 가능)
       const nameKo = moveNameMap.get(id) || m.identifier;
       const typeName = typeIdMap.get(typeId) || 'unknown';
+      const effect = moveEffectMap.get(effectId) || '';
       
       let category = 'status';
       if (damageClassId === 2) category = 'physical';
@@ -303,12 +345,90 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         searchKey,
         power,
         type: typeName,
-        category
+        category,
+        effect
       });
     });
 
     fs.writeFileSync(outputMoves, JSON.stringify(finalMoves, null, 0), 'utf-8');
     console.log(`성공적으로 기술 데이터가 생성되었습니다! (총 ${finalMoves.length} 개) -> ${outputMoves}`);
+
+    console.log('특성(Abilities) 데이터 조립 중...');
+    
+    const abilityNameMap = new Map<number, string>();
+    abilityNamesList.forEach(an => {
+      if (an.local_language_id === '3') {
+        abilityNameMap.set(parseInt(an.ability_id), an.name);
+      }
+    });
+
+    const abilityEffectMap = new Map<number, string>();
+    abilityProseList.forEach(ap => {
+      if (ap.local_language_id === '3') {
+        abilityEffectMap.set(parseInt(ap.ability_id), ap.short_effect || ap.effect);
+      }
+    });
+
+    const finalAbilities: any[] = [];
+    abilitiesList.forEach(a => {
+      const id = parseInt(a.id);
+      if (id >= 10000) return; // 특수 용도 특성 제외
+
+      const nameKo = abilityNameMap.get(id) || a.identifier;
+      const effect = abilityEffectMap.get(id) || '';
+
+      const { disassembled, initialConsonants } = disassembleHangul(nameKo);
+      const searchKey = `${nameKo}|${a.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
+
+      finalAbilities.push({
+        id,
+        nameKo,
+        nameEn: a.identifier,
+        searchKey,
+        effect
+      });
+    });
+
+    fs.writeFileSync(DEFAULT_ABILITIES_OUTPUT_FILE, JSON.stringify(finalAbilities, null, 0), 'utf-8');
+    console.log(`성공적으로 특성 데이터가 생성되었습니다! (총 ${finalAbilities.length} 개) -> ${DEFAULT_ABILITIES_OUTPUT_FILE}`);
+
+    console.log('아이템(Items) 데이터 조립 중...');
+    
+    const itemNameMap = new Map<number, string>();
+    itemNamesList.forEach(inm => {
+      if (inm.local_language_id === '3') {
+        itemNameMap.set(parseInt(inm.item_id), inm.name);
+      }
+    });
+
+    const itemEffectMap = new Map<number, string>();
+    itemProseList.forEach(ip => {
+      if (ip.local_language_id === '3') {
+        itemEffectMap.set(parseInt(ip.item_id), ip.short_effect || ip.effect);
+      }
+    });
+
+    const finalItems: any[] = [];
+    itemsList.forEach(item => {
+      const id = parseInt(item.id);
+      const nameKo = itemNameMap.get(id) || item.identifier;
+      const effect = itemEffectMap.get(id) || '';
+
+      const { disassembled, initialConsonants } = disassembleHangul(nameKo);
+      const searchKey = `${nameKo}|${item.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
+
+      finalItems.push({
+        id,
+        nameKo,
+        nameEn: item.identifier,
+        searchKey,
+        effect,
+        category: parseInt(item.category_id)
+      });
+    });
+
+    fs.writeFileSync(DEFAULT_ITEMS_OUTPUT_FILE, JSON.stringify(finalItems, null, 0), 'utf-8');
+    console.log(`성공적으로 아이템 데이터가 생성되었습니다! (총 ${finalItems.length} 개) -> ${DEFAULT_ITEMS_OUTPUT_FILE}`);
 
   } catch (err) {
     console.error("데이터 생성 중 오류 발생:", err);

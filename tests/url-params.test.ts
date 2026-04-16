@@ -35,8 +35,8 @@ describe('url-params utility', () => {
 
   describe('getTabFromPath', () => {
     it('should return the tab name from the path', () => {
-      mockLocation('/damage-calculator');
-      expect(getTabFromPath()).toBe('damage-calculator');
+      mockLocation('/calculator');
+      expect(getTabFromPath()).toBe('calculator');
     });
 
     it('should return default "settings" for root path', () => {
@@ -47,11 +47,11 @@ describe('url-params utility', () => {
 
   describe('restoreStateFromUrl', () => {
     it('should correctly parse tab and params from a URL string', () => {
-      const url = 'http://localhost/damage-calculator?atkPoke=445&move=earthquake';
+      const url = 'http://localhost/calculator?atkPoke=445&move=earthquake';
       const result = restoreStateFromUrl(url);
       
       expect(result).not.toBeNull();
-      expect(result?.tab).toBe('damage-calculator');
+      expect(result?.tab).toBe('calculator');
       expect(result?.params).toEqual({
         atkPoke: '445',
         move: 'earthquake'

@@ -3,11 +3,8 @@ import type { AppState } from './state/store.js';
 import { loadSettings, saveSettings, getExternalLinks } from './state/storage.js';
 import { getTabFromPath, updatePath, getCurrentStateUrl } from './state/url-params.js';
 import { renderSettings } from './features/settings/index.js';
-import { renderTypeCalculator } from './features/type-calculator/index.js';
 import { renderPokedex } from './features/pokedex/index.js';
-import { renderStatCalculator } from './features/stat-calculator/index.js';
-import { renderDamageCalculator } from './features/damage-calculator/index.js';
-import { renderCatchCalculator } from './features/catch-calculator/index.js';
+import { renderCalculatorHub } from './features/calculator/index.js';
 import { renderExternalLinks } from './features/external-links/index.js';
 import { initPwaBanner } from './components/PwaBanner.js';
 
@@ -58,20 +55,11 @@ export function initApp(container: HTMLElement) {
       case 'settings':
         cleanupCurrentTab = renderSettings(tabContent);
         break;
-      case 'type-calculator':
-        cleanupCurrentTab = renderTypeCalculator(tabContent);
-        break;
       case 'pokedex':
         renderPokedex(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
-      case 'stat-calculator':
-        renderStatCalculator(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
-        break;
-      case 'damage-calculator':
-        renderDamageCalculator(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
-        break;
-      case 'catch-calculator':
-        renderCatchCalculator(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
+      case 'calculator':
+        renderCalculatorHub(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'external-links':
         renderExternalLinks(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
@@ -121,11 +109,43 @@ export function initApp(container: HTMLElement) {
   // 1. 초기 상태 로드 (LocalStorage) 및 반영
   const saved = loadSettings();
   if (saved) {
+    // 탭 마이그레이션 로직
+    let hasOldCalculators = false;
+    const oldCalcIds = ['damage-calculator', 'stat-calculator', 'type-calculator', 'catch-calculator'];
+    
+    let updatedTabs = (saved.tabs || globalStore.getState().tabs).filter(tab => {
+        if (oldCalcIds.includes(tab.id)) {
+            hasOldCalculators = true;
+            return false; // 구형 계산기 제거
+        }
+        return true;
+    });
+
+    // 신규 통합 계산기 탭이 없으면 추가
+    if (hasOldCalculators && !updatedTabs.find(t => t.id === 'calculator')) {
+        const pokedexIndex = updatedTabs.findIndex(t => t.id === 'pokedex');
+        const newCalcTab = { id: 'calculator', currentName: '🧮 계산기', isVisible: true, isCustomized: false };
+        if (pokedexIndex !== -1) {
+            updatedTabs.splice(pokedexIndex + 1, 0, newCalcTab);
+        } else {
+            updatedTabs.unshift(newCalcTab);
+        }
+    }
+
+    // 기존 Pokedex 이름 마이그레이션
+    updatedTabs = updatedTabs.map(tab => {
+        const isDefaultName = tab.currentName.includes('포켓몬 도감') || tab.currentName === '📕 포켓몬 도감';
+        if (tab.id === 'pokedex' && tab.isCustomized !== true && isDefaultName) {
+            return { ...tab, currentName: '📚 정보 도감', isCustomized: false };
+        }
+        return tab;
+    });
+
     globalStore.setState({
       isDarkMode: saved.isDarkMode,
       isCustomMode: saved.isCustomMode,
       generation: saved.generation,
-      tabs: saved.tabs || globalStore.getState().tabs,
+      tabs: updatedTabs,
       visitCount: (saved.visitCount || 0) + 1,
       pwaGuideDismissed: saved.pwaGuideDismissed || false
     });
@@ -189,6 +209,20 @@ export function initApp(container: HTMLElement) {
 
   // 6. 최초 로드 시 URL에 기반한 탭 표시
   let initialTab = getTabFromPath();
+  
+  // 구형 URL 리다이렉션 처리
+  const oldCalcToSub: Record<string, string> = {
+    'stat-calculator': 'stat',
+    'damage-calculator': 'damage',
+    'type-calculator': 'type',
+    'catch-calculator': 'catch'
+  };
+
+  if (oldCalcToSub[initialTab]) {
+    sessionStorage.setItem('calculator_active_subtab', oldCalcToSub[initialTab]);
+    initialTab = 'calculator';
+  }
+
   const currentTabs = globalStore.getState().tabs;
   const targetTab = currentTabs.find(t => t.id === initialTab);
 

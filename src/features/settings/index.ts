@@ -259,6 +259,7 @@ export function renderSettings(container: HTMLElement) {
                 const tab = currentTabs.find(t => t.id === id);
                 if (tab) {
                     tab.isVisible = isVisible;
+                    tab.isCustomized = true; // 수정됨 표시
                     updateUI(); // 스타일 갱신 위해 재렌더링
                 }
             });
@@ -270,7 +271,10 @@ export function renderSettings(container: HTMLElement) {
                 const id = (e.target as HTMLInputElement).getAttribute('data-id');
                 const value = (e.target as HTMLInputElement).value;
                 const tab = currentTabs.find(t => t.id === id);
-                if (tab) tab.currentName = value;
+                if (tab) {
+                    tab.currentName = value;
+                    tab.isCustomized = true; // 수정됨 표시
+                }
             });
         });
 
@@ -304,6 +308,10 @@ export function renderSettings(container: HTMLElement) {
                     const draggedTab = currentTabs[draggedIndex];
                     currentTabs.splice(draggedIndex, 1);
                     currentTabs.splice(targetIndex, 0, draggedTab);
+                    
+                    // 순서 변경도 커스터마이징으로 간주
+                    currentTabs.forEach(t => t.isCustomized = true);
+                    
                     updateUI();
                 }
             });

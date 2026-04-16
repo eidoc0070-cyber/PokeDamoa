@@ -1,6 +1,6 @@
 import { TYPE_MATCHUPS, TYPE_NAMES_KO, TYPE_COLORS, POKEMON_TYPES } from '../../data/constants.js';
 import type { PokemonType } from '../../data/constants.js';
-import { calculateTypeMultiplier } from '../../utils/pokemon-math.js';
+import { getDefenseMatchups, getOffensiveCoverage } from '../../utils/pokemon-math.js';
 
 export function renderTypeCalculator(container: HTMLElement) {
     const selectedTypes: (PokemonType | 'none')[] = ['none', 'none', 'none', 'none'];
@@ -44,35 +44,14 @@ export function renderTypeCalculator(container: HTMLElement) {
             return;
         }
 
-        // 방어 상성 계산 (곱연산)
-        const defMatchups: Record<number, PokemonType[]> = {};
+        // 중앙화된 헬퍼 사용
+        const defMatchups = getDefenseMatchups(currentTypes, TYPE_MATCHUPS, POKEMON_TYPES);
+        const offMatchups = getOffensiveCoverage(currentTypes, TYPE_MATCHUPS, POKEMON_TYPES);
 
-        POKEMON_TYPES.forEach(atkType => {
-            const multiplier = calculateTypeMultiplier(atkType, currentTypes, TYPE_MATCHUPS);
-            if (!defMatchups[multiplier]) {
-               defMatchups[multiplier] = [];
-            }
-            defMatchups[multiplier].push(atkType);
-        });
-
-        // 공격 상성 계산
-        const offMatchups: Record<number, PokemonType[]> = { 2: [], 1: [], 0.5: [], 0: [] };
-
-        POKEMON_TYPES.forEach(defType => {
-            let maxMultiplier = 0;
-            currentTypes.forEach(atkType => {
-                const mult = calculateTypeMultiplier(atkType, [defType], TYPE_MATCHUPS);
-                if (mult > maxMultiplier) maxMultiplier = mult;
-            });
-            if (offMatchups[maxMultiplier]) {
-               offMatchups[maxMultiplier]!.push(defType);
-            }
-        });
-
-        const renderTypeList = (types: PokemonType[]) => {
+        const renderTypeList = (types: string[]) => {
             if (types.length === 0) return '<span style="color: #999; font-size: 0.9em;">-</span>';
             return types.map(t => 
-                `<span style="display:inline-block; background-color: ${TYPE_COLORS[t]}; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; margin: 2px 5px 2px 0; text-shadow: 1px 1px 1px rgba(0,0,0,0.5);">${TYPE_NAMES_KO[t]}</span>`
+                `<span style="display:inline-block; background-color: ${TYPE_COLORS[t as PokemonType]}; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; margin: 2px 5px 2px 0; text-shadow: 1px 1px 1px rgba(0,0,0,0.5);">${TYPE_NAMES_KO[t as PokemonType]}</span>`
             ).join('');
         };
 

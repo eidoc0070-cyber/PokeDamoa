@@ -22,25 +22,41 @@ export interface MoveData {
     power: number;
     type: PokemonType;
     category: 'status' | 'physical' | 'special';
+    effect?: string;
+}
+
+export interface AbilityData {
+    id: number;
+    nameKo: string;
+    nameEn: string;
+    searchKey: string;
+    effect: string;
+}
+
+export interface ItemData {
+    id: number;
+    nameKo: string;
+    nameEn: string;
+    searchKey: string;
+    effect: string;
+    category: number;
 }
 
 let cachedData: PokemonData[] | null = null;
 let cachedMovesData: MoveData[] | null = null;
+let cachedAbilitiesData: AbilityData[] | null = null;
+let cachedItemsData: ItemData[] | null = null;
 
 /**
  * 사전 빌드된 /pokedex-data.json 정적 파일을 가져옵니다.
- * 이 구조는 클라이언트 부하를 최소화하고 PWA 캐싱을 매우 쉽게 만듭니다.
  */
 export async function fetchPokedexData(): Promise<PokemonData[]> {
     if (cachedData) return cachedData;
-    
     try {
-        const response = await fetch('/pokedex-data.json');
+        const response = await fetch('./pokedex-data.json');
         if (!response.ok) throw new Error('Failed to fetch pokedex data');
-        const data = await response.json();
-        
-        cachedData = data;
-        return data as PokemonData[];
+        cachedData = await response.json();
+        return cachedData!;
     } catch (e) {
         console.error('도감 데이터 로드 실패:', e);
         return [];
@@ -52,17 +68,45 @@ export async function fetchPokedexData(): Promise<PokemonData[]> {
  */
 export async function fetchMovesData(): Promise<MoveData[]> {
     if (cachedMovesData) return cachedMovesData;
-    
     try {
-        const response = await fetch('/moves-data.json');
+        const response = await fetch('./moves-data.json');
         if (!response.ok) throw new Error('Failed to fetch moves data');
-        const data = await response.json();
-        
-        // 정렬: 이름순 (선택사항, 하지만 검색을 위해 그냥 캐싱함)
-        cachedMovesData = data;
-        return data as MoveData[];
+        cachedMovesData = await response.json();
+        return cachedMovesData!;
     } catch (e) {
         console.error('기술 데이터 로드 실패:', e);
+        return [];
+    }
+}
+
+/**
+ * 사전 빌드된 /abilities-data.json 정적 파일을 가져옵니다.
+ */
+export async function fetchAbilitiesData(): Promise<AbilityData[]> {
+    if (cachedAbilitiesData) return cachedAbilitiesData;
+    try {
+        const response = await fetch('./abilities-data.json');
+        if (!response.ok) throw new Error('Failed to fetch abilities data');
+        cachedAbilitiesData = await response.json();
+        return cachedAbilitiesData!;
+    } catch (e) {
+        console.error('특성 데이터 로드 실패:', e);
+        return [];
+    }
+}
+
+/**
+ * 사전 빌드된 /items-data.json 정적 파일을 가져옵니다.
+ */
+export async function fetchItemsData(): Promise<ItemData[]> {
+    if (cachedItemsData) return cachedItemsData;
+    try {
+        const response = await fetch('./items-data.json');
+        if (!response.ok) throw new Error('Failed to fetch items data');
+        cachedItemsData = await response.json();
+        return cachedItemsData!;
+    } catch (e) {
+        console.error('아이템 데이터 로드 실패:', e);
         return [];
     }
 }

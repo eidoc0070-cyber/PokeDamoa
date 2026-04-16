@@ -10,16 +10,14 @@ export interface TabItem {
     id: string; // 고유 ID (URL 파라미터 등에서 참조)
     currentName: string; // 표시될 이름
     isVisible: boolean; // 노출 여부
+    isCustomized?: boolean; // 사용자가 수동으로 수정한 적이 있는지 여부
 }
 
 export const DEFAULT_TABS: TabItem[] = [
-    { id: 'pokedex', currentName: '📕 포켓몬 도감', isVisible: true },
-    { id: 'damage-calculator', currentName: '⚔️ 데미지 계산기', isVisible: true },
-    { id: 'stat-calculator', currentName: '📊 실수값 계산기', isVisible: true },
-    { id: 'type-calculator', currentName: '🛡️ 타입 계산기', isVisible: true },
-    { id: 'catch-calculator', currentName: '🎯 포획 정보', isVisible: true },
-    { id: 'external-links', currentName: '🔗 외부 링크', isVisible: true },
-    { id: 'settings', currentName: '⚙️ 설정', isVisible: true },
+    { id: 'pokedex', currentName: '📚 정보 도감', isVisible: true, isCustomized: false },
+    { id: 'calculator', currentName: '🧮 계산기', isVisible: true, isCustomized: false },
+    { id: 'external-links', currentName: '🔗 외부 링크', isVisible: true, isCustomized: true },
+    { id: 'settings', currentName: '⚙️ 설정', isVisible: true, isCustomized: false },
 ];
 
 export interface SavedSettings {
