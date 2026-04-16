@@ -13,11 +13,21 @@ const HANGUL_START = 0xAC00;
 const HANGUL_END = 0xD7A3;
 
 /**
+ * 복합 자모를 개별 자모로 분리합니다. (예: ㄳ -> ㄱㅅ, ㄵ -> ㄴㅈ)
+ */
+const COMPLEX_JAMO: Record<string, string> = {
+    'ㄲ': 'ㄱㄱ', 'ㄸ': 'ㄷㄷ', 'ㅃ': 'ㅂㅂ', 'ㅆ': 'ㅅㅅ', 'ㅉ': 'ㅈㅈ',
+    'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ',
+    'ㅘ': 'ㅗㅏ', 'ㅙ': 'ㅗㅐ', 'ㅚ': 'ㅗㅣ', 'ㅝ': 'ㅜㅓ', 'ㅞ': 'ㅜㅔ', 'ㅟ': 'ㅜㅣ', 'ㅢ': 'ㅡㅣ'
+};
+
+/**
  * 한글 문자열을 초성/중성/종성으로 분리합니다.
  * @param text 분리할 한글 문자열
+ * @param fullyDecompose 복합 자모를 더 잘게 분해할지 여부
  * @returns { disassembled: string, initialConsonants: string }
  */
-export function disassembleHangul(text: string) {
+export function disassembleHangul(text: string, fullyDecompose: boolean = false) {
   let disassembled = '';
   let initialConsonants = '';
 
@@ -26,16 +36,35 @@ export function disassembleHangul(text: string) {
 
     if (code >= HANGUL_START && code <= HANGUL_END) {
       const index = code - HANGUL_START;
-      const choIndex = Math.floor(index / 588);
-      const jungIndex = Math.floor((index % 588) / 28);
-      const jongIndex = index % 28;
+      const choIdx = Math.floor(index / 588);
+      const jungIdx = Math.floor((index % 588) / 28);
+      const jongIdx = index % 28;
 
-      disassembled += CHO[choIndex] + JUNG[jungIndex] + JONG[jongIndex];
-      initialConsonants += CHO[choIndex];
+      let cho = CHO[choIdx];
+      let jung = JUNG[jungIdx];
+      let jong = JONG[jongIdx];
+
+      if (fullyDecompose) {
+          cho = COMPLEX_JAMO[cho] || cho;
+          jung = COMPLEX_JAMO[jung] || jung;
+          jong = COMPLEX_JAMO[jong] || jong;
+      }
+
+      disassembled += cho + jung + jong;
+      initialConsonants += cho;
+    } else if (code >= 0x3131 && code <= 0x318E) {
+        const decomposed = fullyDecompose ? (COMPLEX_JAMO[char] || char) : char;
+        disassembled += decomposed;
+        if (CHO.includes(char)) {
+            initialConsonants += decomposed;
+        } else {
+            initialConsonants += char;
+        }
     } else {
       // 한글이 아닌 경우 그대로 유지
-      disassembled += char;
-      initialConsonants += char;
+      const lower = char.toLowerCase();
+      disassembled += lower;
+      initialConsonants += lower;
     }
   }
 

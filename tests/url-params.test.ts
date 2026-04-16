@@ -1,8 +1,7 @@
-
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { getTabFromPath, restoreStateFromUrl } from '../src/state/url-params';
 
 // Mock window/location for non-browser environments like bun test
@@ -34,24 +33,32 @@ describe('url-params utility', () => {
   });
 
   describe('getTabFromPath', () => {
-    it('should return the tab name from the path', () => {
+    it('should return the main tab name from the path', () => {
       mockLocation('/calculator');
-      expect(getTabFromPath()).toBe('calculator');
+      expect(getTabFromPath().mainTab).toBe('calculator');
+    });
+
+    it('should return the sub tab name if present', () => {
+      mockLocation('/pokedex/move');
+      const info = getTabFromPath();
+      expect(info.mainTab).toBe('pokedex');
+      expect(info.subTab).toBe('move');
     });
 
     it('should return default "settings" for root path', () => {
       mockLocation('/');
-      expect(getTabFromPath()).toBe('settings');
+      expect(getTabFromPath().mainTab).toBe('settings');
     });
   });
 
   describe('restoreStateFromUrl', () => {
     it('should correctly parse tab and params from a URL string', () => {
-      const url = 'http://localhost/calculator?atkPoke=445&move=earthquake';
+      const url = 'http://localhost/calculator/damage?atkPoke=445&move=earthquake';
       const result = restoreStateFromUrl(url);
       
       expect(result).not.toBeNull();
-      expect(result?.tab).toBe('calculator');
+      expect(result?.mainTab).toBe('calculator');
+      expect(result?.subTab).toBe('damage');
       expect(result?.params).toEqual({
         atkPoke: '445',
         move: 'earthquake'
@@ -61,7 +68,7 @@ describe('url-params utility', () => {
     it('should handle root path in URL string', () => {
       const url = 'http://localhost/';
       const result = restoreStateFromUrl(url);
-      expect(result?.tab).toBe('settings');
+      expect(result?.mainTab).toBe('settings');
     });
 
     it('should return null for invalid URL', () => {

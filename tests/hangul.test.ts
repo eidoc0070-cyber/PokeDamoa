@@ -49,6 +49,20 @@ describe('Hangul Utility', () => {
       expect(hangulIncludes(pikachuSearchKey, 'ㅍㅣㅋ')).toBe(true);
     });
 
+    it('should match query that needs disassembly (incremental search)', () => {
+      // "핔" disassembles to "ㅍㅣㅋ", which is in "피카츄"
+      expect(hangulIncludes(pikachuSearchKey, '핔')).toBe(true);
+      // "카" matches
+      expect(hangulIncludes(pikachuSearchKey, 'ㅋㅏ')).toBe(true);
+    });
+
+    it('should match fully decomposed jamo', () => {
+        // "ㄲ" -> "ㄱㄱ"
+        const kkakSearchKey = '깎다|kkakda|ㄲㅏㄲㄷㅏ|ㄲㄷ';
+        expect(hangulIncludes(kkakSearchKey, 'ㄱㄱㅏㄱㄱ')).toBe(true);
+        expect(hangulIncludes(kkakSearchKey, 'ㄲㅏㄲ')).toBe(true);
+    });
+
     it('should match English name', () => {
       expect(hangulIncludes(pikachuSearchKey, 'pika')).toBe(true);
     });

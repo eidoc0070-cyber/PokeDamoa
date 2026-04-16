@@ -3,12 +3,19 @@ import { renderMoveList } from './sub-features/move-list.js';
 import { renderAbilityList } from './sub-features/ability-list.js';
 import { renderItemList } from './sub-features/item-list.js';
 import { renderFieldList } from './sub-features/field-list.js';
+import { updatePath } from '../../state/url-params.js';
 
 type SubTab = 'pokemon' | 'move' | 'ability' | 'item' | 'field';
 
-export async function renderPokedex(container: HTMLElement): Promise<() => void> {
+export async function renderPokedex(container: HTMLElement, initialSubTab?: string): Promise<() => void> {
     let currentCleanup: (() => void) | null = null;
-    let activeSubTab: SubTab = (sessionStorage.getItem('pokedex_active_subtab') as SubTab) || 'pokemon';
+    
+    // 우선순위: URL 파라미터 > 세션스토리지 > 기본값('pokemon')
+    let activeSubTab: SubTab = (initialSubTab as SubTab) || (sessionStorage.getItem('pokedex_active_subtab') as SubTab) || 'pokemon';
+    
+    // 유효하지 않은 서브탭이면 기본값으로
+    const validTabs: SubTab[] = ['pokemon', 'move', 'ability', 'item', 'field'];
+    if (!validTabs.includes(activeSubTab)) activeSubTab = 'pokemon';
 
     container.innerHTML = `
         <div class="pokedex-hub">
@@ -52,10 +59,14 @@ export async function renderPokedex(container: HTMLElement): Promise<() => void>
     const contentEl = container.querySelector('#sub-tab-content') as HTMLElement;
     const buttons = container.querySelectorAll<HTMLButtonElement>('.sub-tab-btn');
 
-    const switchSubTab = async (tab: SubTab) => {
+    const switchSubTab = async (tab: SubTab, updateUrl = true) => {
         if (currentCleanup) currentCleanup();
         activeSubTab = tab;
         sessionStorage.setItem('pokedex_active_subtab', tab);
+        
+        if (updateUrl) {
+            updatePath('pokedex', tab);
+        }
 
         // UI 업데이트
         buttons.forEach(btn => {
@@ -88,8 +99,8 @@ export async function renderPokedex(container: HTMLElement): Promise<() => void>
         btn.onclick = () => switchSubTab(btn.dataset.subtab as SubTab);
     });
 
-    // 초기 탭 로드
-    await switchSubTab(activeSubTab);
+    // 초기 탭 로드 (최초 로드 시에는 URL 업데이트 불필요)
+    await switchSubTab(activeSubTab, false);
 
     return () => {
         if (currentCleanup) currentCleanup();

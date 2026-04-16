@@ -2,12 +2,19 @@ import { renderStatCalculator } from '../stat-calculator/index.js';
 import { renderDamageCalculator } from '../damage-calculator/index.js';
 import { renderTypeCalculator } from '../type-calculator/index.js';
 import { renderCatchCalculator } from '../catch-calculator/index.js';
+import { updatePath } from '../../state/url-params.js';
 
 type CalculatorSubTab = 'stat' | 'damage' | 'type' | 'catch';
 
-export async function renderCalculatorHub(container: HTMLElement): Promise<() => void> {
+export async function renderCalculatorHub(container: HTMLElement, initialSubTab?: string): Promise<() => void> {
     let currentCleanup: (() => void) | null = null;
-    let activeSubTab: CalculatorSubTab = (sessionStorage.getItem('calculator_active_subtab') as CalculatorSubTab) || 'stat';
+    
+    // 우선순위: URL 파라미터 > 세션스토리지 > 기본값('stat')
+    let activeSubTab: CalculatorSubTab = (initialSubTab as CalculatorSubTab) || (sessionStorage.getItem('calculator_active_subtab') as CalculatorSubTab) || 'stat';
+
+    // 유효하지 않은 서브탭이면 기본값으로
+    const validTabs: CalculatorSubTab[] = ['stat', 'damage', 'type', 'catch'];
+    if (!validTabs.includes(activeSubTab)) activeSubTab = 'stat';
 
     container.innerHTML = `
         <div class="calculator-hub">
@@ -50,10 +57,14 @@ export async function renderCalculatorHub(container: HTMLElement): Promise<() =>
     const contentEl = container.querySelector('#calculator-content') as HTMLElement;
     const buttons = container.querySelectorAll<HTMLButtonElement>('.sub-tab-btn');
 
-    const switchSubTab = async (tab: CalculatorSubTab) => {
+    const switchSubTab = async (tab: CalculatorSubTab, updateUrl = true) => {
         if (currentCleanup) currentCleanup();
         activeSubTab = tab;
         sessionStorage.setItem('calculator_active_subtab', tab);
+        
+        if (updateUrl) {
+            updatePath('calculator', tab);
+        }
 
         // UI 업데이트
         buttons.forEach(btn => {
@@ -84,8 +95,8 @@ export async function renderCalculatorHub(container: HTMLElement): Promise<() =>
         btn.onclick = () => switchSubTab(btn.dataset.subtab as CalculatorSubTab);
     });
 
-    // 초기 탭 로드
-    await switchSubTab(activeSubTab);
+    // 초기 탭 로드 (최초 로드 시에는 URL 업데이트 불필요)
+    await switchSubTab(activeSubTab, false);
 
     return () => {
         if (currentCleanup) currentCleanup();

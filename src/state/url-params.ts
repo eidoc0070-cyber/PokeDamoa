@@ -2,19 +2,32 @@
  * URL 경로(Path)와 쿼리 스트링(Query String)을 다루는 유틸리티
  */
 
-// 현재 탭 경로 가져오기 (예: /pokedex -> pokedex)
-export function getTabFromPath(): string {
-    const path = window.location.pathname.replace(/^\/|\/$/g, '');
-    return path || 'settings';
+export interface PathInfo {
+    mainTab: string;
+    subTab?: string;
+}
+
+// 현재 탭 경로 가져오기 (예: /pokedex/pokemon -> { mainTab: 'pokedex', subTab: 'pokemon' })
+export function getTabFromPath(): PathInfo {
+    const pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
+    return {
+        mainTab: pathParts[0] || 'settings',
+        subTab: pathParts[1] // 없을 수도 있음
+    };
 }
 
 // URL 경로 업데이트
-export function updatePath(tabName: string) {
-    const currentPath = getTabFromPath();
-    if (currentPath !== tabName) {
+export function updatePath(mainTab: string, subTab?: string) {
+    const info = getTabFromPath();
+    if (info.mainTab !== mainTab || info.subTab !== subTab) {
         const url = new URL(window.location.href);
-        url.pathname = `/${tabName}`;
-        url.search = ''; // 다른 탭으로 이동 시 이전 탭의 Query String 초기화
+        url.pathname = subTab ? `/${mainTab}/${subTab}` : `/${mainTab}`;
+        
+        // 메인 탭이 바뀌면 이전 탭의 Query String 초기화, 서브 탭만 바뀌면 유지
+        if (info.mainTab !== mainTab) {
+            url.search = '';
+        }
+        
         window.history.pushState({}, '', url.toString());
     }
 }
@@ -51,9 +64,10 @@ export function getCurrentStateUrl(): string {
 export function restoreStateFromUrl(urlStr: string) {
     try {
         const url = new URL(urlStr);
-        const tab = url.pathname.replace(/^\/|\/$/g, '') || 'settings';
-        // 이 함수를 호출하는 곳에서 탭 이동 및 데이터 복원을 처리해야 함
-        return { tab, params: Object.fromEntries(url.searchParams.entries()) };
+        const pathParts = url.pathname.replace(/^\/|\/$/g, '').split('/');
+        const mainTab = pathParts[0] || 'settings';
+        const subTab = pathParts[1];
+        return { mainTab, subTab, params: Object.fromEntries(url.searchParams.entries()) };
     } catch (e) {
         console.error('URL 파싱 실패:', e);
         return null;

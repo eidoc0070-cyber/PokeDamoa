@@ -40,9 +40,9 @@ export function initApp(container: HTMLElement) {
   const tabContent = container.querySelector<HTMLElement>('#tab-content')!;
   let cleanupCurrentTab: (() => void) | null = null;
 
-  const navigateTo = (tabName: string) => {
+  const navigateTo = (tabName: string, subTab?: string) => {
     // URL 업데이트 및 전역 상태 업데이트
-    updatePath(tabName);
+    updatePath(tabName, subTab);
     globalStore.setState({ activeTab: tabName });
 
     if (cleanupCurrentTab) {
@@ -56,10 +56,10 @@ export function initApp(container: HTMLElement) {
         cleanupCurrentTab = renderSettings(tabContent);
         break;
       case 'pokedex':
-        renderPokedex(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
+        renderPokedex(tabContent, subTab).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'calculator':
-        renderCalculatorHub(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
+        renderCalculatorHub(tabContent, subTab).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'external-links':
         renderExternalLinks(tabContent).then(cleanup => { cleanupCurrentTab = cleanup; });
@@ -208,7 +208,7 @@ export function initApp(container: HTMLElement) {
   });
 
   // 6. 최초 로드 시 URL에 기반한 탭 표시
-  let initialTab = getTabFromPath();
+  let { mainTab: initialTab, subTab: initialSubTab } = getTabFromPath();
   
   // 구형 URL 리다이렉션 처리
   const oldCalcToSub: Record<string, string> = {
@@ -219,7 +219,7 @@ export function initApp(container: HTMLElement) {
   };
 
   if (oldCalcToSub[initialTab]) {
-    sessionStorage.setItem('calculator_active_subtab', oldCalcToSub[initialTab]);
+    initialSubTab = oldCalcToSub[initialTab];
     initialTab = 'calculator';
   }
 
@@ -241,9 +241,10 @@ export function initApp(container: HTMLElement) {
       }
   }
 
-  navigateTo(initialTab);
+  navigateTo(initialTab, initialSubTab);
 
   window.addEventListener('popstate', () => {
-    navigateTo(getTabFromPath());
+    const { mainTab, subTab } = getTabFromPath();
+    navigateTo(mainTab, subTab);
   });
 }
