@@ -3,6 +3,7 @@ import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
 import { calculateStat, calculateBulk, calculatePower } from '../../utils/pokemon-math.js';
 import { createAutocomplete } from '../../components/SearchAutocomplete.js';
+import { renderStatInputCard } from '../../components/StatInputCard.js'; // 모듈화된 카드 UI
 
 const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
 type StatKey = typeof STAT_KEYS[number];
@@ -60,87 +61,99 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
 
             container.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
-                        <div style="flex:1; min-width:300px;">
-                            <h2 style="margin-top:0;">실수값(실능) 계산기</h2>
-                            <div id="poke-autocomplete-container"></div>
-                            <label style="font-weight:bold; display:block; margin-bottom:10px;">
-                                레벨 (Level) : <input type="number" id="level-input" value="${level}" min="1" max="100" style="width: 60px; padding: 5px; font-size: 1.1rem;" />
+                    <div class="card" style="margin-bottom:0;">
+                        <h2 class="card-title">실수값(실능) 계산기</h2>
+                        <div id="poke-autocomplete-container"></div>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+                            <label style="font-weight:bold; display:flex; align-items:center; gap:8px;">
+                                레벨 : <input type="number" id="level-input" class="form-control" value="${level}" min="1" max="100" style="width: 80px; text-align:center;" />
                             </label>
-                            <button id="btn-nature-table" style="padding: 8px 15px; background: #673ab7; color: #fff; border:none; border-radius: 6px; cursor:pointer; font-weight:bold;">📋 성격 표 보기</button>
+                            <button id="btn-nature-table" class="btn" style="color:var(--primary-color); border-color:var(--primary-color);">📋 성격표</button>
                         </div>
+                        
                         ${selectedPoke ? `
-                        <div style="background:rgba(0,0,0,0.05); border-radius: 12px; padding: 20px; text-align:center; min-width: 180px;">
-                            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:96px; height:96px; image-rendering:pixelated; background:#fff; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,0.1); display:block; margin: 0 auto 10px;" />
-                            <h3 style="margin:0;">${selectedPoke.nameKo}</h3>
-                            <div style="margin-top:5px;">
-                                ${selectedPoke.types.map(t => `<span style="display:inline-block; padding: 3px 8px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.8em; margin:2px;">${TYPE_NAMES_KO[t]}</span>`).join('')}
+                        <div style="margin-top:20px; background:rgba(0,0,0,0.03); border-radius:12px; padding:15px; display:flex; align-items:center; gap:15px;">
+                            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:80px; height:80px; image-rendering:pixelated; background:#fff; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,0.1);" />
+                            <div>
+                                <h3 style="margin:0 0 5px 0;">${selectedPoke.nameKo}</h3>
+                                <div>
+                                    ${selectedPoke.types.map(t => `<span style="display:inline-block; padding: 4px 10px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:20px; font-size:0.8rem; margin-right:4px;">${TYPE_NAMES_KO[t]}</span>`).join('')}
+                                </div>
                             </div>
                         </div>` : ''}
                     </div>
 
-                    <div style="background:#fff; border-radius:12px; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <h3 style="margin:0;">능력치 조절</h3>
-                            <span style="font-size:0.9em; font-weight:bold; color: ${evTotal > 510 ? 'red' : '#333'};">노력치: ${evTotal}/510</span>
+                    <div style="background:transparent;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 5px;">
+                            <h3 style="margin:0; font-size:1.1rem; color:var(--text-color);">능력치 세팅 (카드뷰)</h3>
+                            <span style="font-size:0.9rem; font-weight:bold; padding:4px 10px; border-radius:20px; background:${evTotal > 510 ? '#ffebee' : '#e8f5e9'}; color:${evTotal > 510 ? '#d32f2f' : '#2e7d32'}; box-shadow:0 1px 3px rgba(0,0,0,0.1);">노력치: ${evTotal}/510</span>
                         </div>
-                        <div style="overflow-x:auto;">
-                            <table style="width:100%; border-collapse: collapse; text-align:center;">
-                                <thead>
-                                    <tr style="background:#f5f5f5; border-bottom: 2px solid #ddd;">
-                                        <th>스탯</th><th>종족</th><th>개체</th><th>노력</th><th>성격</th><th style="color:#d32f2f;">실능</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${STAT_KEYS.map(key => {
-                                        const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : calcStat(key)))));
-                                        return `
-                                        <tr style="border-bottom: 1px solid #eee;">
-                                            <td style="padding:10px; font-weight:bold; color:${STAT_COLORS[key]}">${STAT_NAMES[key]}</td>
-                                            <td><input type="number" class="base-stat-input" data-stat="${key}" value="${baseStats[key]}" style="width:50px; text-align:center;" /></td>
-                                            <td><input type="number" class="iv-input" data-stat="${key}" value="${ivs[key]}" style="width:40px; text-align:center;" /></td>
-                                            <td><input type="number" class="ev-input" data-stat="${key}" value="${evs[key]}" style="width:50px; text-align:center;" /></td>
-                                            <td>${key === 'hp' ? '-' : `<input type="radio" name="nature-plus" value="${key}" ${naturePlus === key ? 'checked' : ''} />+ <input type="radio" name="nature-minus" value="${key}" ${natureMinus === key ? 'checked' : ''} />-`}</td>
-                                            <td style="font-size:1.2em; font-weight:bold; color:#d32f2f;">${realVal}</td>
-                                        </tr>`;
-                                    }).join('')}
-                                </tbody>
-                            </table>
+                        
+                        <div style="display:flex; flex-direction:column;">
+                            ${STAT_KEYS.map(key => {
+                                const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : calcStat(key)))));
+                                return renderStatInputCard({
+                                    statKey: key,
+                                    statName: STAT_NAMES[key],
+                                    statColor: STAT_COLORS[key],
+                                    base: baseStats[key],
+                                    iv: ivs[key],
+                                    ev: evs[key],
+                                    naturePlus: naturePlus === key,
+                                    natureMinus: natureMinus === key,
+                                    realVal
+                                });
+                            }).join('')}
                         </div>
                     </div>
 
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
-                        <div style="background:#fff; border-radius:12px; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
-                            <h3 style="margin-top:0;">결정력 계산</h3>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:15px;">
+                        <div class="card">
+                            <h3 style="margin-top:0; color:var(--text-color);">결정력 계산</h3>
                             <div id="move-autocomplete-container"></div>
-                            <div style="font-size:1.5em; font-weight:bold; color:#f57c00; text-align:center; padding:10px; background:rgba(245,124,0,0.1); border-radius:8px; margin-top:10px;">
+                            <div style="font-size:1.4rem; font-weight:bold; color:#f57c00; text-align:center; padding:15px; background:rgba(245,124,0,0.1); border-radius:12px; margin-top:15px;">
                                 결정력: ${powerVal.toLocaleString()}
                             </div>
                         </div>
-                        <div style="background:#fff; border-radius:12px; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
-                            <h3 style="margin-top:0;">내구력 계산</h3>
-                            <p>물리내구: <strong>${physBulk.toLocaleString()}</strong></p>
-                            <p>특수내구: <strong>${specBulk.toLocaleString()}</strong></p>
+                        <div class="card">
+                            <h3 style="margin-top:0; color:var(--text-color);">내구력 계산</h3>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                <div style="display:flex; justify-content:space-between; padding:15px; background:rgba(0,0,0,0.03); border-radius:12px;">
+                                    <span style="color:var(--text-muted);">물리내구</span>
+                                    <strong style="font-size:1.2rem;">${physBulk.toLocaleString()}</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; padding:15px; background:rgba(0,0,0,0.03); border-radius:12px;">
+                                    <span style="color:var(--text-muted);">특수내구</span>
+                                    <strong style="font-size:1.2rem;">${specBulk.toLocaleString()}</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="nature-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
-                    <div style="background:#fff; width:95%; max-width:500px; border-radius:12px; padding:20px; position:relative;">
-                        <button id="modal-close" style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
-                        <h3>성격 보정표</h3>
-                        <p style="font-size:0.9em;">성격에 따라 능력치가 1.1배 증가하거나 0.9배 감소합니다. (HP 제외)</p>
-                        <table style="width:100%; border-collapse:collapse; font-size:0.8em; text-align:center;">
-                            <tr style="background:#eee;"><th>성격</th><th>증가(+)</th><th>감소(-)</th></tr>
-                            <tr><td>고집</td><td>공격</td><td>특공</td></tr>
-                            <tr><td>명랑</td><td>스피드</td><td>특공</td></tr>
-                            <tr><td>겁쟁이</td><td>스피드</td><td>공격</td></tr>
-                            <tr><td>조심</td><td>특공</td><td>공격</td></tr>
-                            <tr><td>차분</td><td>특방</td><td>공격</td></tr>
-                            <tr><td>신중</td><td>특방</td><td>특공</td></tr>
-                            <tr><td>대담</td><td>방어</td><td>공격</td></tr>
-                            <tr><td>장난꾸러기</td><td>방어</td><td>특공</td></tr>
-                        </table>
+                <div id="nature-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
+                    <div style="background:var(--surface-color); width:90%; max-width:400px; border-radius:16px; padding:25px; position:relative; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+                        <button id="modal-close" style="position:absolute; top:15px; right:15px; border:none; background:rgba(0,0,0,0.05); width:30px; height:30px; border-radius:50%; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
+                        <h3 style="margin-top:0; color:var(--text-color);">성격 보정표</h3>
+                        <p style="font-size:0.9rem; color:var(--text-muted);">성격에 따라 특정 능력치가 증감합니다. (HP 제외)</p>
+                        <div style="overflow:hidden; border-radius:8px; border:1px solid var(--border-color);">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem; text-align:center;">
+                                <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-color);">
+                                    <th style="padding:10px;">성격</th>
+                                    <th style="padding:10px; color:#d32f2f;">증가(+)</th>
+                                    <th style="padding:10px; color:#1976d2;">감소(-)</th>
+                                </tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">고집</td><td style="color:#d32f2f;">공격</td><td style="color:#1976d2;">특공</td></tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">명랑</td><td style="color:#d32f2f;">스피드</td><td style="color:#1976d2;">특공</td></tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">겁쟁이</td><td style="color:#d32f2f;">스피드</td><td style="color:#1976d2;">공격</td></tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">조심</td><td style="color:#d32f2f;">특공</td><td style="color:#1976d2;">공격</td></tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">차분</td><td style="color:#d32f2f;">특방</td><td style="color:#1976d2;">공격</td></tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">신중</td><td style="color:#d32f2f;">특방</td><td style="color:#1976d2;">특공</td></tr>
+                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">대담</td><td style="color:#d32f2f;">방어</td><td style="color:#1976d2;">공격</td></tr>
+                                <tr><td style="padding:8px;">장난꾸러기</td><td style="color:#d32f2f;">방어</td><td style="color:#1976d2;">특공</td></tr>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
@@ -198,7 +211,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
 
         renderUI();
     } catch (err) {
-        container.innerHTML = `<p style="color:red; text-align:center;">오류: ${err}</p>`;
+        container.innerHTML = `<div class="card"><p style="color:red; text-align:center;">오류: ${err}</p></div>`;
     }
     return () => {};
 }

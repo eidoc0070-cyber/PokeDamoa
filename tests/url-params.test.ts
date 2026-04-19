@@ -1,35 +1,18 @@
-/**
- * @vitest-environment jsdom
- */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'bun:test'; // vitest -> bun:test
 import { getTabFromPath, restoreStateFromUrl } from '../src/state/url-params';
-
-// Mock window/location for non-browser environments like bun test
-if (typeof window === 'undefined') {
-    (globalThis as any).window = globalThis;
-}
 
 // Helper for mocking location
 const mockLocation = (pathname: string) => {
-  if (typeof vi !== 'undefined' && vi.stubGlobal) {
-    vi.stubGlobal('location', { pathname });
-  } else {
-    // Fallback for non-vitest environments like bun test
     // @ts-ignore
-    globalThis.location = { pathname } as any;
-  }
+    window.happyDOM.setURL(`http://localhost${pathname}`);
 };
 
 describe('url-params utility', () => {
-  const originalLocation = typeof globalThis !== 'undefined' ? globalThis.location : undefined;
+  const originalUrl = window.location.href;
 
   afterEach(() => {
-    if (typeof vi !== 'undefined' && vi.unstubAllGlobals) {
-        vi.unstubAllGlobals();
-    } else if (originalLocation) {
-        // @ts-ignore
-        globalThis.location = originalLocation;
-    }
+    // @ts-ignore
+    window.happyDOM.setURL(originalUrl);
   });
 
   describe('getTabFromPath', () => {

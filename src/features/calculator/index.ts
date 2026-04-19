@@ -17,45 +17,19 @@ export async function renderCalculatorHub(container: HTMLElement, initialSubTab?
     if (!validTabs.includes(activeSubTab)) activeSubTab = 'stat';
 
     container.innerHTML = `
-        <div class="calculator-hub">
-            <div class="sub-tab-menu" style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch;">
-                <button data-subtab="stat" class="sub-tab-btn">실수값</button>
-                <button data-subtab="damage" class="sub-tab-btn">데미지</button>
-                <button data-subtab="type" class="sub-tab-btn">타입 상성</button>
-                <button data-subtab="catch" class="sub-tab-btn">포획</button>
+        <div class="calculator-hub" style="display:flex; flex-direction:column; min-height: 100%;">
+            <div class="top-tab-bar" style="margin: -16px -16px 16px -16px;">
+                <button data-subtab="stat" class="top-tab-btn">실수값</button>
+                <button data-subtab="damage" class="top-tab-btn">데미지</button>
+                <button data-subtab="type" class="top-tab-btn">타입 상성</button>
+                <button data-subtab="catch" class="top-tab-btn">포획</button>
             </div>
-            <div id="calculator-content"></div>
+            <div id="calculator-content" style="flex:1;"></div>
         </div>
-        <style>
-            .calculator-hub .sub-tab-btn {
-                padding: 8px 16px;
-                border: 1px solid #ddd;
-                background: var(--bg-color, #fff);
-                color: var(--text-color, #333);
-                border-radius: 20px;
-                cursor: pointer;
-                white-space: nowrap;
-                font-size: 0.9rem;
-                transition: all 0.2s;
-            }
-            .calculator-hub .sub-tab-btn.active {
-                background: var(--primary-color, #1976d2);
-                color: #fff;
-                border-color: var(--primary-color, #1976d2);
-                font-weight: bold;
-            }
-            .calculator-hub .sub-tab-menu::-webkit-scrollbar {
-                height: 4px;
-            }
-            .calculator-hub .sub-tab-menu::-webkit-scrollbar-thumb {
-                background: #ccc;
-                border-radius: 2px;
-            }
-        </style>
     `;
 
     const contentEl = container.querySelector('#calculator-content') as HTMLElement;
-    const buttons = container.querySelectorAll<HTMLButtonElement>('.sub-tab-btn');
+    const buttons = container.querySelectorAll<HTMLButtonElement>('.top-tab-btn');
 
     const switchSubTab = async (tab: CalculatorSubTab, updateUrl = true) => {
         if (currentCleanup) currentCleanup();

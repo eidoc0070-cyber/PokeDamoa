@@ -26,7 +26,7 @@ const defaultMatchups = (): Record<PokemonType, number> =>
 // 구조: TYPE_MATCHUPS[공격자타입][방어자타입] = 배율
 export const TYPE_MATCHUPS: Record<PokemonType, Record<PokemonType, number>> = {
   normal: { ...defaultMatchups(), rock: 0.5, ghost: 0, steel: 0.5 },
-  fire: { ...defaultMatchups(), fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
+  fire: { ...defaultMatchups(), fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2, fairy: 0.5 },
   water: { ...defaultMatchups(), fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
   electric: { ...defaultMatchups(), water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 },
   grass: { ...defaultMatchups(), fire: 0.5, water: 0.5, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 },
@@ -44,3 +44,66 @@ export const TYPE_MATCHUPS: Record<PokemonType, Record<PokemonType, number>> = {
   steel: { ...defaultMatchups(), fire: 0.5, water: 0.5, electric: 0.5, ice: 2, rock: 2, steel: 0.5, fairy: 2 },
   fairy: { ...defaultMatchups(), fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
 };
+
+/**
+ * 세대에 따른 상성 테이블을 반환합니다.
+ */
+export function getTypeMatchupsForGen(gen: number | 'champions'): Record<PokemonType, Record<PokemonType, number>> {
+  // 깊은 복사
+  const matchups: Record<PokemonType, Record<PokemonType, number>> = JSON.parse(JSON.stringify(TYPE_MATCHUPS));
+  const g = gen === 'champions' ? 9 : gen;
+
+  // 6세대 미만: 페어리 타입 관련 상성 제거 및 수정
+  if (g < 6) {
+    const typesToRemove: PokemonType[] = ['fairy'];
+    
+    // 페어리 타입 자체의 공격/방어 상성 제거 (사실상 안 쓰이게 됨)
+    // 다른 타입이 페어리에게 주는 영향 수정 (모두 1배로)
+    POKEMON_TYPES.forEach(atk => {
+      if (matchups[atk]) {
+        matchups[atk].fairy = 1.0;
+      }
+    });
+
+    // 강철 타입의 고스트, 악 내성 (0.5배) 존재하던 시절 (2~5세대)
+    matchups.ghost.steel = 0.5;
+    matchups.dark.steel = 0.5;
+  }
+
+  // 2세대 미만: 악, 강철 타입 관련 상성 제거 및 수정
+  if (g < 2) {
+    const typesToRemove: PokemonType[] = ['dark', 'steel'];
+    
+    POKEMON_TYPES.forEach(atk => {
+      if (matchups[atk]) {
+        matchups[atk].dark = 1.0;
+        matchups[atk].steel = 1.0;
+      }
+    });
+
+    // 1세대 특수 상성
+    // 고스트 -> 에스퍼 (0배, 원래 버그였으나 1세대 공식)
+    matchups.ghost.psychic = 0;
+    // 독 <-> 벌레 (서로 2배)
+    matchups.poison.bug = 2;
+    matchups.bug.poison = 2;
+    // 얼음 -> 불꽃 (1배, 2세대부터 0.5배)
+    matchups.ice.fire = 1;
+  }
+
+  return matchups;
+}
+
+/**
+ * 세대에 존재하는 타입 목록만 반환합니다.
+ */
+export function getTypesForGenList(gen: number | 'champions'): PokemonType[] {
+  const g = gen === 'champions' ? 9 : gen;
+  if (g < 2) {
+    return POKEMON_TYPES.filter(t => !['dark', 'steel', 'fairy'].includes(t));
+  }
+  if (g < 6) {
+    return POKEMON_TYPES.filter(t => t !== 'fairy');
+  }
+  return [...POKEMON_TYPES];
+}

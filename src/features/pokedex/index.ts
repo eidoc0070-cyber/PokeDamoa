@@ -18,46 +18,20 @@ export async function renderPokedex(container: HTMLElement, initialSubTab?: stri
     if (!validTabs.includes(activeSubTab)) activeSubTab = 'pokemon';
 
     container.innerHTML = `
-        <div class="pokedex-hub">
-            <div class="sub-tab-menu" style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch;">
-                <button data-subtab="pokemon" class="sub-tab-btn">포켓몬</button>
-                <button data-subtab="move" class="sub-tab-btn">기술</button>
-                <button data-subtab="ability" class="sub-tab-btn">특성</button>
-                <button data-subtab="item" class="sub-tab-btn">아이템</button>
-                <button data-subtab="field" class="sub-tab-btn">필드</button>
+        <div class="pokedex-hub" style="display:flex; flex-direction:column; min-height: 100%;">
+            <div class="top-tab-bar" style="margin: -16px -16px 16px -16px;">
+                <button data-subtab="pokemon" class="top-tab-btn">포켓몬</button>
+                <button data-subtab="move" class="top-tab-btn">기술</button>
+                <button data-subtab="ability" class="top-tab-btn">특성</button>
+                <button data-subtab="item" class="top-tab-btn">아이템</button>
+                <button data-subtab="field" class="top-tab-btn">필드</button>
             </div>
-            <div id="sub-tab-content"></div>
+            <div id="sub-tab-content" style="flex:1;"></div>
         </div>
-        <style>
-            .sub-tab-btn {
-                padding: 8px 16px;
-                border: 1px solid #ddd;
-                background: var(--bg-color, #fff);
-                color: var(--text-color, #333);
-                border-radius: 20px;
-                cursor: pointer;
-                white-space: nowrap;
-                font-size: 0.9rem;
-                transition: all 0.2s;
-            }
-            .sub-tab-btn.active {
-                background: var(--primary-color, #1976d2);
-                color: #fff;
-                border-color: var(--primary-color, #1976d2);
-                font-weight: bold;
-            }
-            .pokedex-hub .sub-tab-menu::-webkit-scrollbar {
-                height: 4px;
-            }
-            .pokedex-hub .sub-tab-menu::-webkit-scrollbar-thumb {
-                background: #ccc;
-                border-radius: 2px;
-            }
-        </style>
     `;
 
     const contentEl = container.querySelector('#sub-tab-content') as HTMLElement;
-    const buttons = container.querySelectorAll<HTMLButtonElement>('.sub-tab-btn');
+    const buttons = container.querySelectorAll<HTMLButtonElement>('.top-tab-btn');
 
     const switchSubTab = async (tab: SubTab, updateUrl = true) => {
         if (currentCleanup) currentCleanup();

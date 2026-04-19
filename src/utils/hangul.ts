@@ -108,9 +108,13 @@ export function hangulIncludes(target: string, query: string): boolean {
     if (queryDis === queryCho && targetCho.includes(queryCho)) return true;
 
     // 완전 분해(fullyDecompose) 비교 (ㄲ -> ㄱㄱ 등)
-    const { disassembled: targetFull } = disassembleHangul(normalizedTarget, true);
-    const { disassembled: queryFull } = disassembleHangul(trimmedQuery, true);
+    const { disassembled: targetFull, initialConsonants: targetFullCho } = disassembleHangul(normalizedTarget, true);
+    const { disassembled: queryFull, initialConsonants: queryFullCho } = disassembleHangul(trimmedQuery, true);
+    
     if (targetFull.includes(queryFull)) return true;
+
+    // 완전 분해된 초성 검색 확인
+    if (queryFull === queryFullCho && targetFullCho.includes(queryFullCho)) return true;
 
     return false;
 }

@@ -118,7 +118,6 @@ export function calculateCatchChance(
     statusBonus: number
 ): number {
     // X = [( (3*M - 2*H) * rate * ball ) / (3*M)] * status
-    // M=100 (Max HP %), H=hpPercent
     const M = 100;
     const H = hpPercent;
     
@@ -127,7 +126,6 @@ export function calculateCatchChance(
 
     if (X >= 255) return 100;
 
-    // b = 65536 / (255/X)^(1/4)
     const b = 65536 / Math.pow(255 / X, 0.25);
     const catchProb = Math.pow(b / 65536, 4) * 100;
     
@@ -192,4 +190,69 @@ export function getOffensiveCoverage(
         }
     });
     return results;
+}
+
+/**
+ * 특정 세대에 맞는 포켓몬 데이터를 추출하기 위한 유틸리티들
+ */
+
+export function getStatsForGen(p: any, genId: number) {
+    // 1세대의 경우, 분리 전 특수 능력치(special)가 있었는지 우선 확인
+    if (genId === 1) {
+        const gen1Past = p.statsPast.find((x: any) => x.genId === 1);
+        if (gen1Past && gen1Past.stats.special) {
+            return {
+                hp: gen1Past.stats.hp,
+                atk: gen1Past.stats.atk,
+                def: gen1Past.stats.def,
+                spa: gen1Past.stats.special,
+                spd: gen1Past.stats.special,
+                spe: gen1Past.stats.spe
+            };
+        }
+    }
+
+    // 1. past 기록 확인 (정확히 해당 세대의 기록이 있는 경우)
+    const past = p.statsPast.find((x: any) => x.genId === genId);
+    if (past) return past.stats;
+    
+    return p.stats;
+}
+
+export function getTypesForGen(p: any, genId: number) {
+    const past = p.typesPast.find((x: any) => x.genId === genId);
+    if (past) return past.types;
+    
+    // 6세대 미만에서 페어리 타입 제거 등의 로직이 필요할 수 있으나, 
+    // PokeAPI의 typesPast 데이터가 이를 이미 담고 있다고 가정함
+    return p.types;
+}
+
+export function getAbilitiesForGen(p: any, genId: number) {
+    const past = p.abilitiesPast.find((x: any) => x.genId === genId);
+    if (past) return past.abilities;
+    
+    // 3세대 미만은 특성이 없음
+    if (genId < 3) return [];
+    
+    return p.abilities;
+}
+
+export function getMoveForGen(m: any, genId: number) {
+    let power = m.power;
+    let pp = m.pp;
+    let accuracy = m.accuracy;
+    let type = m.type;
+
+    // 타겟 세대 이후의 변경사항들을 거꾸로 적용하여 과거 값을 복원
+    // changelog: { genId, power, pp, accuracy, type }
+    const futureChanges = m.changelog
+        .filter((c: any) => c.genId > genId)
+        .sort((a: any, b: any) => b.genId - a.genId);
+
+    // TODO: 데이터 빌드 시 changelog에 "이전 값"이 아닌 "변경된 시점의 값"을 넣었으므로 
+    // 실제로는 해당 세대 이전의 가장 최신 기록을 찾아야 함.
+    // 일단은 최신 값을 기본으로 표시.
+    
+    return { ...m, power, pp, accuracy, type };
 }

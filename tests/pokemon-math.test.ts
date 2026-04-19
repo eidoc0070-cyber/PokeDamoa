@@ -1,5 +1,5 @@
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test'; // vitest -> bun:test
 import { calculateStat, calculateBaseDamage, calculateDamageRolls, calculateTypeMultiplier } from '../src/utils/pokemon-math';
 
 describe('pokemon-math utility', () => {

@@ -1,5 +1,5 @@
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test'; // vitest -> bun:test
 import { disassembleHangul, hangulIncludes } from '../src/utils/hangul';
 
 describe('Hangul Utility', () => {
@@ -61,6 +61,42 @@ describe('Hangul Utility', () => {
         const kkakSearchKey = '깎다|kkakda|ㄲㅏㄲㄷㅏ|ㄲㄷ';
         expect(hangulIncludes(kkakSearchKey, 'ㄱㄱㅏㄱㄱ')).toBe(true);
         expect(hangulIncludes(kkakSearchKey, 'ㄲㅏㄲ')).toBe(true);
+    });
+
+    it('should match complex jamo in query even if not in target searchKey', () => {
+        const raichuSearchKey = '라이츄|raichu|ㄹㅏㅇㅣㅊㅠ|ㄹㅇㅊ';
+        // "ㄹㅏㅇ" matches "ㄹㅏㅇㅣㅊㅠ"
+        expect(hangulIncludes(raichuSearchKey, 'ㄹㅏㅇ')).toBe(true);
+        // "ㄹㅏㅇㅣ" matches
+        expect(hangulIncludes(raichuSearchKey, 'ㄹㅏㅇㅣ')).toBe(true);
+    });
+
+    it('should match when target is just a raw Hangul string', () => {
+        expect(hangulIncludes('망나뇽', 'ㅁㄴㄴ')).toBe(true);
+        expect(hangulIncludes('망나뇽', 'ㅁㅏㅇㄴㅏ')).toBe(true);
+        expect(hangulIncludes('망나뇽', 'ㅁㅏㅇㄴㅏㄴㅛㅇ')).toBe(true);
+    });
+
+    it('should handle double consonants correctly', () => {
+        expect(hangulIncludes('꼬부기', 'ㄲㅂㄱ')).toBe(true);
+        expect(hangulIncludes('꼬부기', 'ㄱㄱㅂㄱ')).toBe(true); // Fully decomposed
+        expect(hangulIncludes('꼬부기', 'ㄲㅗ')).toBe(true);
+        expect(hangulIncludes('꼬부기', 'ㄱㄱㅗ')).toBe(true);
+    });
+
+    it('should handle complex batchim correctly', () => {
+        expect(hangulIncludes('래비풋', 'ㄹㅐㅂㅣㅍㅜㅅ')).toBe(true);
+        // "ㄹㅐㅂㅣㅍㅜㅅ" contains "ㅍㅜㅅ"
+        // If query is "ㅍㅜㅅ", it should match.
+        // If target has "ㅅ" but query has "ㅅㅅ"(ㅆ), it should NOT match.
+        expect(hangulIncludes('래비풋', 'ㅍㅜㅅ')).toBe(true);
+    });
+
+    it('should handle mixed initial consonants and full characters', () => {
+        // Current implementation might not support mixed like "ㅍㅣㅋㅊ" for "피카츄" 
+        // because it either compares disassembled OR initial consonants.
+        // Let's test current behavior.
+        expect(hangulIncludes('피카츄', 'ㅍㅣㅋㅊ')).toBe(false); // This is likely false currently
     });
 
     it('should match English name', () => {

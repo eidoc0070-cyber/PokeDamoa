@@ -52,15 +52,15 @@ export function renderSettings(container: HTMLElement) {
         </div>
       </div>
 
-      <div style="background:rgba(33, 150, 243, 0.05); padding:20px; border-radius:12px; margin-bottom:20px; border: 1px solid rgba(33, 150, 243, 0.2);">
-        <h3 style="margin-top:0; color:#1976d2;">UI 구성 및 메뉴 관리</h3>
-        <p style="margin-bottom:15px; font-size:0.9rem;">상단 내비게이션 바에 표시될 탭의 이름과 순서, 노출 여부를 관리합니다.</p>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button id="btn-open-tab-manager" style="padding:12px 20px; background:#2196f3; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem; box-shadow: 0 2px 4px rgba(33,150,243,0.3);">
-                상단 탭 설정 관리자 열기
+      <div class="card" style="margin-bottom:20px;">
+        <h3 class="card-title" style="color:var(--secondary-color);">하단 탭 메뉴 관리</h3>
+        <p style="margin-bottom:15px; font-size:0.9rem; color:var(--text-muted);">하단 내비게이션 바에 표시될 탭의 이름과 순서, 노출 여부를 관리합니다.</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button id="btn-open-tab-manager" class="btn btn-primary" style="width: 100%;">
+                하단 탭 설정 관리자 열기
             </button>
-            <button id="btn-show-pwa-guide" style="padding:12px 20px; background:#4caf50; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem; box-shadow: 0 2px 4px rgba(76,175,80,0.3);">
-                PWA 설치 안내 다시 보기
+            <button id="btn-show-pwa-guide" class="btn" style="width: 100%;">
+                PWA 앱 설치 안내
             </button>
         </div>
       </div>
@@ -205,7 +205,7 @@ export function renderSettings(container: HTMLElement) {
     const updateUI = () => {
         modal.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h2 style="margin:0;">상단 탭 설정</h2>
+                <h2 style="margin:0;">하단 탭 설정</h2>
                 <button id="modal-close" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
             <p style="color:#666; font-size:0.9rem; margin:0;">드래그하여 순서를 변경하고, 이름을 수정하거나 숨길 수 있습니다.</p>
@@ -245,7 +245,7 @@ export function renderSettings(container: HTMLElement) {
         });
 
         modal.querySelector('#btn-reset-tabs')?.addEventListener('click', () => {
-            if (confirm('상단 탭 설정이 초기 상태로 돌아갑니다. 계속하시겠습니까?')) {
+            if (confirm('하단 탭 설정이 초기 상태로 돌아갑니다. 계속하시겠습니까?')) {
                 currentTabs = [...DEFAULT_TABS];
                 updateUI();
             }

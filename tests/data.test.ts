@@ -1,4 +1,4 @@
-import { expect, test, describe } from "vitest";
+import { expect, test, describe } from "bun:test"; // vitest -> bun:test
 import * as fs from "fs";
 import * as path from "path";
 import { FIELD_EFFECTS } from "../src/data/field-data";

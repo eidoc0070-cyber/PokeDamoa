@@ -12,7 +12,6 @@ const DEFAULT_MOVES_OUTPUT_FILE = path.resolve(__dirname, '../public/moves-data.
 const DEFAULT_ABILITIES_OUTPUT_FILE = path.resolve(__dirname, '../public/abilities-data.json');
 const DEFAULT_ITEMS_OUTPUT_FILE = path.resolve(__dirname, '../public/items-data.json');
 
-// 매우 단순한 CSV 파서 (현재 대상 파일들은 내부에 쉼표(,)가 없음을 전제)
 function parseCSV(csvDir: string, filename: string) {
   const filePath = path.join(csvDir, filename);
   if (!fs.existsSync(filePath)) {
@@ -20,8 +19,6 @@ function parseCSV(csvDir: string, filename: string) {
     return [];
   }
   const content = fs.readFileSync(filePath, 'utf-8');
-  // 따옴표 내의 쉼표를 처리하기 위한 복잡한 정규식 대신, 
-  // 포켓몬 CSV 특성상 따옴표로 감싸진 필드가 있을 수 있으므로 처리 개선
   const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return [];
 
@@ -29,7 +26,6 @@ function parseCSV(csvDir: string, filename: string) {
   const results: any[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    // 쉼표로 분리하되 따옴표 내부의 쉼표는 무시하는 간단한 처리
     const row = lines[i];
     const cols: string[] = [];
     let current = '';
@@ -54,7 +50,6 @@ function parseCSV(csvDir: string, filename: string) {
   return results;
 }
 
-// 명칭 변환 보조 함수 (identifier -> 읽기 좋은 이름)
 function formatIdentifier(id: string) {
     if (!id) return '';
     return id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -70,10 +65,16 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const pokemonTypesList = parseCSV(csvDir, 'pokemon_types.csv');
     const typesList = parseCSV(csvDir, 'types.csv');
     const pokemonStatsList = parseCSV(csvDir, 'pokemon_stats.csv');
+    const pokemonAbilitiesList = parseCSV(csvDir, 'pokemon_abilities.csv');
+    
+    const pokemonStatsPastList = parseCSV(csvDir, 'pokemon_stats_past.csv');
+    const pokemonTypesPastList = parseCSV(csvDir, 'pokemon_types_past.csv');
+    const pokemonAbilitiesPastList = parseCSV(csvDir, 'pokemon_abilities_past.csv');
     
     const movesList = parseCSV(csvDir, 'moves.csv');
     const moveNamesList = parseCSV(csvDir, 'move_names.csv');
     const moveEffectProseList = parseCSV(csvDir, 'move_effect_prose.csv');
+    const moveChangelogList = parseCSV(csvDir, 'move_changelog.csv');
 
     const abilitiesList = parseCSV(csvDir, 'abilities.csv');
     const abilityNamesList = parseCSV(csvDir, 'ability_names.csv');
@@ -83,7 +84,6 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const itemNamesList = parseCSV(csvDir, 'item_names.csv');
     const itemProseList = parseCSV(csvDir, 'item_prose.csv');
     
-    // 출현 위치 정보를 위한 CSV 파싱
     const encountersList = parseCSV(csvDir, 'encounters.csv');
     const locationsList = parseCSV(csvDir, 'locations.csv');
     const locationNamesList = parseCSV(csvDir, 'location_names.csv');
@@ -93,9 +93,16 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const versionNamesList = parseCSV(csvDir, 'version_names.csv');
     const versionGroupsList = parseCSV(csvDir, 'version_groups.csv');
 
+    console.log('기술 습득 정보(pokemon_moves.csv) 로딩 중...');
+    const pokemonMovesRaw = parseCSV(csvDir, 'pokemon_moves.csv');
+
     console.log('데이터 매핑 중...');
 
-    // 1. species_id -> generation_id, capture_rate 매핑
+    const versionGroupToGenMap = new Map<number, number>();
+    versionGroupsList.forEach(vg => {
+      versionGroupToGenMap.set(parseInt(vg.id), parseInt(vg.generation_id));
+    });
+
     const speciesDataMap = new Map<number, { genId: number, captureRate: number }>();
     speciesList.forEach(s => {
       speciesDataMap.set(parseInt(s.id), {
@@ -104,7 +111,6 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       });
     });
 
-    // 2. species_id -> 한국어 이름 매핑 (local_language_id = 3)
     const speciesNameMap = new Map<number, string>();
     speciesNamesList.forEach(sn => {
       if (sn.local_language_id === '3') {
@@ -112,75 +118,116 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       }
     });
 
-    // 3. type_id -> type identifier 매핑
     const typeIdMap = new Map<number, string>();
     typesList.forEach(t => {
       typeIdMap.set(parseInt(t.id), t.identifier);
     });
 
-    // 4. pokemon_id -> types (순서 보장 위해 slot 참조)
     const pokemonToTypesMap = new Map<number, string[]>();
     pokemonTypesList.forEach(pt => {
       const pid = parseInt(pt.pokemon_id);
       const tid = parseInt(pt.type_id);
       const slot = parseInt(pt.slot);
-      const tName = typeIdMap.get(tid);
-
       if (!pokemonToTypesMap.has(pid)) pokemonToTypesMap.set(pid, []);
-      pokemonToTypesMap.get(pid)![slot - 1] = tName!;
+      pokemonToTypesMap.get(pid)![slot - 1] = typeIdMap.get(tid)!;
     });
 
-    // 5. pokemon_id -> stats
+    const pokemonToTypesPastMap = new Map<number, any[]>();
+    pokemonTypesPastList.forEach(ptp => {
+        const pid = parseInt(ptp.pokemon_id);
+        const genId = parseInt(ptp.generation_id);
+        const tid = parseInt(ptp.type_id);
+        const slot = parseInt(ptp.slot);
+        if (!pokemonToTypesPastMap.has(pid)) pokemonToTypesPastMap.set(pid, []);
+        let entry = pokemonToTypesPastMap.get(pid)!.find(e => e.genId === genId);
+        if (!entry) {
+            entry = { genId, types: [] };
+            pokemonToTypesPastMap.get(pid)!.push(entry);
+        }
+        entry.types[slot - 1] = typeIdMap.get(tid)!;
+    });
+
+    const statKeyMap: Record<number, string> = { 1: 'hp', 2: 'atk', 3: 'def', 4: 'spa', 5: 'spd', 6: 'spe', 9: 'special' };
+    const getStatsObj = () => ({ hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 } as any);
+
     const pokemonToStatsMap = new Map<number, any>();
-    const statKeyMap: Record<number, string> = { 1: 'hp', 2: 'atk', 3: 'def', 4: 'spa', 5: 'spd', 6: 'spe' };
     pokemonStatsList.forEach(ps => {
       const pid = parseInt(ps.pokemon_id);
       const sid = parseInt(ps.stat_id);
-      const val = parseInt(ps.base_stat);
-
-      if (!pokemonToStatsMap.has(pid)) {
-        pokemonToStatsMap.set(pid, { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 });
-      }
-      const statName = statKeyMap[sid];
-      if (statName) {
-        pokemonToStatsMap.get(pid)![statName] = val;
-      }
+      if (!pokemonToStatsMap.has(pid)) pokemonToStatsMap.set(pid, getStatsObj());
+      const key = statKeyMap[sid];
+      if (key && key !== 'special') pokemonToStatsMap.get(pid)![key] = parseInt(ps.base_stat);
     });
 
-    // --- 출현 위치 정보 매핑 시작 ---
-    
-    // location_id -> { ko: string, en: string, identifier: string }
+    const pokemonToStatsPastMap = new Map<number, any[]>();
+    pokemonStatsPastList.forEach(psp => {
+        const pid = parseInt(psp.pokemon_id);
+        const genId = parseInt(psp.generation_id);
+        const sid = parseInt(psp.stat_id);
+        const val = parseInt(psp.base_stat);
+        if (!pokemonToStatsPastMap.has(pid)) pokemonToStatsPastMap.set(pid, []);
+        let entry = pokemonToStatsPastMap.get(pid)!.find(e => e.genId === genId);
+        if (!entry) {
+            entry = { genId, stats: getStatsObj() };
+            pokemonToStatsPastMap.get(pid)!.push(entry);
+        }
+        const key = statKeyMap[sid];
+        if (key === 'special') entry.stats['special'] = val;
+        else if (key) entry.stats[key] = val;
+    });
+
+    const pokemonToAbilitiesMap = new Map<number, {id: number, isHidden: boolean}[]>();
+    pokemonAbilitiesList.forEach(pa => {
+        const pid = parseInt(pa.pokemon_id);
+        if (!pokemonToAbilitiesMap.has(pid)) pokemonToAbilitiesMap.set(pid, []);
+        pokemonToAbilitiesMap.get(pid)!.push({ id: parseInt(pa.ability_id), isHidden: pa.is_hidden === '1' });
+    });
+
+    const pokemonToAbilitiesPastMap = new Map<number, any[]>();
+    pokemonAbilitiesPastList.forEach(pap => {
+        const pid = parseInt(pap.pokemon_id);
+        const genId = parseInt(pap.generation_id);
+        if (!pokemonToAbilitiesPastMap.has(pid)) pokemonToAbilitiesPastMap.set(pid, []);
+        let entry = pokemonToAbilitiesPastMap.get(pid)!.find(e => e.genId === genId);
+        if (!entry) {
+            entry = { genId, abilities: [] };
+            pokemonToAbilitiesPastMap.get(pid)!.push(entry);
+        }
+        entry.abilities.push({ id: parseInt(pap.ability_id), isHidden: pap.is_hidden === '1' });
+    });
+
+    const pokemonLearnsetMap = new Map<number, Record<number, number[]>>();
+    pokemonMovesRaw.forEach(pm => {
+        const pid = parseInt(pm.pokemon_id);
+        const vgid = parseInt(pm.version_group_id);
+        const mid = parseInt(pm.move_id);
+        const genId = versionGroupToGenMap.get(vgid);
+        if (!genId) return;
+        if (!pokemonLearnsetMap.has(pid)) pokemonLearnsetMap.set(pid, {});
+        if (!pokemonLearnsetMap.get(pid)![genId]) pokemonLearnsetMap.get(pid)![genId] = [];
+        const list = pokemonLearnsetMap.get(pid)![genId];
+        if (!list.includes(mid)) list.push(mid);
+    });
+
+    // 출현 위치 매핑
     const locationInfoMap = new Map<number, { ko: string, en: string, identifier: string }>();
-    locationsList.forEach(l => {
-        locationInfoMap.set(parseInt(l.id), { ko: '', en: '', identifier: l.identifier });
-    });
+    locationsList.forEach(l => { locationInfoMap.set(parseInt(l.id), { ko: '', en: '', identifier: l.identifier }); });
     locationNamesList.forEach(ln => {
-        const lid = parseInt(ln.location_id);
-        const info = locationInfoMap.get(lid);
+        const info = locationInfoMap.get(parseInt(ln.location_id));
         if (info) {
             if (ln.local_language_id === '3') info.ko = ln.name;
             if (ln.local_language_id === '9') info.en = ln.name;
         }
     });
 
-    // location_area_id -> { ko: string, en: string, identifier: string, locationId: number }
     const areaInfoMap = new Map<number, { ko: string, en: string, identifier: string, locationId: number }>();
-    locationAreasList.forEach(la => {
-        areaInfoMap.set(parseInt(la.id), { ko: '', en: '', identifier: la.identifier, locationId: parseInt(la.location_id) });
-    });
+    locationAreasList.forEach(la => { areaInfoMap.set(parseInt(la.id), { ko: '', en: '', identifier: la.identifier, locationId: parseInt(la.location_id) }); });
     locationAreaProseList.forEach(lap => {
-        const laid = parseInt(lap.location_area_id);
-        const info = areaInfoMap.get(laid);
+        const info = areaInfoMap.get(parseInt(lap.location_area_id));
         if (info) {
             if (lap.local_language_id === '3') info.ko = lap.name;
             if (lap.local_language_id === '9') info.en = lap.name;
         }
-    });
-
-    // version_id -> { name: string, genId: number }
-    const versionGroupMap = new Map<number, { genId: number }>();
-    versionGroupsList.forEach(vg => {
-      versionGroupMap.set(parseInt(vg.id), { genId: parseInt(vg.generation_id) });
     });
 
     const versionMap = new Map<number, { name: string, genId: number }>();
@@ -191,251 +238,144 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         if (vn.local_language_id === '3') versionNameMap.get(vid)!.ko = vn.name;
         if (vn.local_language_id === '9') versionNameMap.get(vid)!.en = vn.name;
     });
-
     versionsList.forEach(v => {
       const vid = parseInt(v.id);
       const vgid = parseInt(v.version_group_id);
-      const vg = versionGroupMap.get(vgid);
+      const vg = versionGroupsList.find(g => parseInt(g.id) === vgid);
       const names = versionNameMap.get(vid);
-      const name = (names && names.ko) ? names.ko : ((names && names.en) ? names.en : formatIdentifier(v.identifier));
-      versionMap.set(vid, { name, genId: vg ? vg.genId : 0 });
+      const name = names?.ko || names?.en || formatIdentifier(v.identifier);
+      versionMap.set(vid, { name, genId: vg ? parseInt(vg.generation_id) : 0 });
     });
 
-    // pokemon_id -> encounters grouped by version and location
-    // Map<pid, Map<vid, Map<lid, Set<areaName>>>>
-    const pokemonEncountersRaw = new Map<number, Map<number, Map<number, Set<string>>>>();
-    
+    const pokemonEncountersRawMap = new Map<number, Map<number, Map<number, Set<string>>>>();
     encountersList.forEach(e => {
       const pid = parseInt(e.pokemon_id);
       const vid = parseInt(e.version_id);
-      const laid = parseInt(e.location_area_id);
-      
-      const areaInfo = areaInfoMap.get(laid);
-      if (!areaInfo) return;
-      
-      const lid = areaInfo.locationId;
-      const areaName = areaInfo.ko || areaInfo.en || formatIdentifier(areaInfo.identifier);
-
-      if (!pokemonEncountersRaw.has(pid)) pokemonEncountersRaw.set(pid, new Map());
-      const vMap = pokemonEncountersRaw.get(pid)!;
-      
+      const area = areaInfoMap.get(parseInt(e.location_area_id));
+      if (!area) return;
+      if (!pokemonEncountersRawMap.has(pid)) pokemonEncountersRawMap.set(pid, new Map());
+      const vMap = pokemonEncountersRawMap.get(pid)!;
       if (!vMap.has(vid)) vMap.set(vid, new Map());
       const lMap = vMap.get(vid)!;
-      
-      if (!lMap.has(lid)) lMap.set(lid, new Set());
-      lMap.get(lid)!.add(areaName);
+      if (!lMap.has(area.locationId)) lMap.set(area.locationId, new Set());
+      lMap.get(area.locationId)!.add(area.ko || area.en || formatIdentifier(area.identifier));
     });
 
-    // pokemon_id -> Array of { genId, versionName, locations: string[] }
     const pokemonEncountersMap = new Map<number, any[]>();
-    pokemonEncountersRaw.forEach((vMap, pid) => {
+    pokemonEncountersRawMap.forEach((vMap, pid) => {
       const encounters: any[] = [];
       vMap.forEach((lMap, vid) => {
         const vInfo = versionMap.get(vid);
         if (!vInfo) return;
-
-        const locationStrings: string[] = [];
+        const locations: string[] = [];
         lMap.forEach((aSet, lid) => {
             const lInfo = locationInfoMap.get(lid);
-            if (!lInfo) return;
-            const lName = lInfo.ko || lInfo.en || formatIdentifier(lInfo.identifier);
-            
-            // Area 이름이 Location 이름과 같거나 비어있으면 생략, 아니면 합침
-            const areas = Array.from(aSet).filter(a => a && a !== lName && a !== formatIdentifier(lInfo.identifier));
-            if (areas.length > 0) {
-                locationStrings.push(`${lName} (${areas.join(', ')})`);
-            } else {
-                locationStrings.push(lName);
-            }
+            const lName = lInfo?.ko || lInfo?.en || formatIdentifier(lInfo?.identifier || '');
+            const areas = Array.from(aSet).filter(a => a && a !== lName);
+            locations.push(areas.length > 0 ? `${lName} (${areas.join(', ')})` : lName);
         });
-
-        encounters.push({
-          genId: vInfo.genId,
-          versionName: vInfo.name,
-          locations: locationStrings
-        });
+        encounters.push({ genId: vInfo.genId, versionName: vInfo.name, locations });
       });
-      // 정렬: 세대순, 버전이름순
       encounters.sort((a, b) => a.genId - b.genId || a.versionName.localeCompare(b.versionName));
       pokemonEncountersMap.set(pid, encounters);
     });
 
-    // --- 출현 위치 정보 매핑 종료 ---
-
     console.log('JSON 조립 중...');
-
     const finalPokedex: any[] = [];
-
     pokemonList.forEach(p => {
       const id = parseInt(p.id);
-      const speciesId = parseInt(p.species_id);
-      const isDefault = parseInt(p.is_default) === 1;
-      
-      const sData = speciesDataMap.get(speciesId);
-      const genId = sData ? sData.genId : 0;
-      const captureRate = sData ? sData.captureRate : 0;
-
-      const nameKo = speciesNameMap.get(speciesId) || p.identifier;
-      const types = (pokemonToTypesMap.get(id) || []).filter(Boolean);
-      const stats = pokemonToStatsMap.get(id) || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
-      
-      // 출현 위치 정보 추가
-      const encounters = pokemonEncountersMap.get(id) || [];
-
+      const sId = parseInt(p.species_id);
+      const sData = speciesDataMap.get(sId);
+      const nameKo = speciesNameMap.get(sId) || p.identifier;
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
-      const searchKey = `${nameKo}|${p.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
-
       finalPokedex.push({
-        id,
-        speciesId,
-        nameKo,
-        nameEn: p.identifier,
-        searchKey,
-        types,
-        stats,
-        genId,
-        captureRate,
-        isDefault,
-        encounters
+        id, speciesId: sId, nameKo, nameEn: p.identifier,
+        searchKey: `${nameKo}|${p.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        types: (pokemonToTypesMap.get(id) || []).filter(Boolean),
+        typesPast: pokemonToTypesPastMap.get(id) || [],
+        stats: pokemonToStatsMap.get(id) || getStatsObj(),
+        statsPast: pokemonToStatsPastMap.get(id) || [],
+        abilities: pokemonToAbilitiesMap.get(id) || [],
+        abilitiesPast: pokemonToAbilitiesPastMap.get(id) || [],
+        genId: sData?.genId || 0,
+        captureRate: sData?.captureRate || 0,
+        isDefault: p.is_default === '1',
+        encounters: pokemonEncountersMap.get(id) || [],
+        learnsets: pokemonLearnsetMap.get(id) || {}
       });
     });
-
     fs.writeFileSync(outputPokedex, JSON.stringify(finalPokedex, null, 0), 'utf-8');
-    console.log(`성공적으로 도감 데이터가 생성되었습니다! (총 ${finalPokedex.length} 마리) -> ${outputPokedex}`);
 
-    console.log('기술(Moves) 데이터 조립 중...');
-    
+    const moveChangelogMap = new Map<number, any[]>();
+    moveChangelogList.forEach(mc => {
+        const mid = parseInt(mc.move_id);
+        const vgid = parseInt(mc.changed_in_version_group_id);
+        const genId = versionGroupToGenMap.get(vgid);
+        if (!genId) return;
+        if (!moveChangelogMap.has(mid)) moveChangelogMap.set(mid, []);
+        moveChangelogMap.get(mid)!.push({
+            genId,
+            power: mc.power ? parseInt(mc.power) : null,
+            pp: mc.pp ? parseInt(mc.pp) : null,
+            accuracy: mc.accuracy ? parseInt(mc.accuracy) : null,
+            type: mc.type_id ? typeIdMap.get(parseInt(mc.type_id)) : null
+        });
+    });
+
     const moveNameMap = new Map<number, string>();
-    moveNamesList.forEach(mn => {
-      if (mn.local_language_id === '3') {
-        moveNameMap.set(parseInt(mn.move_id), mn.name);
-      }
-    });
-
+    moveNamesList.forEach(mn => { if (mn.local_language_id === '3') moveNameMap.set(parseInt(mn.move_id), mn.name); });
     const moveEffectMap = new Map<number, string>();
-    moveEffectProseList.forEach(mep => {
-      if (mep.local_language_id === '3') {
-        moveEffectMap.set(parseInt(mep.move_effect_id), mep.short_effect || mep.effect);
-      }
-    });
+    moveEffectProseList.forEach(mep => { if (mep.local_language_id === '3') moveEffectMap.set(parseInt(mep.move_effect_id), mep.short_effect || mep.effect); });
 
     const finalMoves: any[] = [];
     movesList.forEach(m => {
       const id = parseInt(m.id);
-      const power = parseInt(m.power) || 0;
-      const typeId = parseInt(m.type_id);
-      const damageClassId = parseInt(m.damage_class_id); // 1=status, 2=physical, 3=special
-      const effectId = parseInt(m.effect_id);
-      
       const nameKo = moveNameMap.get(id) || m.identifier;
-      const typeName = typeIdMap.get(typeId) || 'unknown';
-      const effect = moveEffectMap.get(effectId) || '';
-      
-      let category = 'status';
-      if (damageClassId === 2) category = 'physical';
-      if (damageClassId === 3) category = 'special';
-
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
-      const searchKey = `${nameKo}|${m.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
-
       finalMoves.push({
-        id,
-        nameKo,
-        nameEn: m.identifier,
-        searchKey,
-        power,
-        type: typeName,
-        category,
-        effect
+        id, nameKo, nameEn: m.identifier, searchKey: `${nameKo}|${m.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        power: parseInt(m.power) || 0, pp: parseInt(m.pp) || 0, accuracy: parseInt(m.accuracy) || 0,
+        type: typeIdMap.get(parseInt(m.type_id)) || 'unknown',
+        category: parseInt(m.damage_class_id) === 2 ? 'physical' : parseInt(m.damage_class_id) === 3 ? 'special' : 'status',
+        effect: moveEffectMap.get(parseInt(m.effect_id)) || '',
+        changelog: moveChangelogMap.get(id) || []
       });
     });
-
     fs.writeFileSync(outputMoves, JSON.stringify(finalMoves, null, 0), 'utf-8');
-    console.log(`성공적으로 기술 데이터가 생성되었습니다! (총 ${finalMoves.length} 개) -> ${outputMoves}`);
 
-    console.log('특성(Abilities) 데이터 조립 중...');
-    
     const abilityNameMap = new Map<number, string>();
-    abilityNamesList.forEach(an => {
-      if (an.local_language_id === '3') {
-        abilityNameMap.set(parseInt(an.ability_id), an.name);
-      }
-    });
-
+    abilityNamesList.forEach(an => { if (an.local_language_id === '3') abilityNameMap.set(parseInt(an.ability_id), an.name); });
     const abilityEffectMap = new Map<number, string>();
-    abilityProseList.forEach(ap => {
-      if (ap.local_language_id === '3') {
-        abilityEffectMap.set(parseInt(ap.ability_id), ap.short_effect || ap.effect);
-      }
-    });
-
+    abilityProseList.forEach(ap => { if (ap.local_language_id === '3') abilityEffectMap.set(parseInt(ap.ability_id), ap.short_effect || ap.effect); });
     const finalAbilities: any[] = [];
     abilitiesList.forEach(a => {
       const id = parseInt(a.id);
-      if (id >= 10000) return; // 특수 용도 특성 제외
-
+      if (id >= 10000) return;
       const nameKo = abilityNameMap.get(id) || a.identifier;
-      const effect = abilityEffectMap.get(id) || '';
-
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
-      const searchKey = `${nameKo}|${a.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
-
-      finalAbilities.push({
-        id,
-        nameKo,
-        nameEn: a.identifier,
-        searchKey,
-        effect
-      });
+      finalAbilities.push({ id, nameKo, nameEn: a.identifier, searchKey: `${nameKo}|${a.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`, effect: abilityEffectMap.get(id) || '' });
     });
-
     fs.writeFileSync(DEFAULT_ABILITIES_OUTPUT_FILE, JSON.stringify(finalAbilities, null, 0), 'utf-8');
-    console.log(`성공적으로 특성 데이터가 생성되었습니다! (총 ${finalAbilities.length} 개) -> ${DEFAULT_ABILITIES_OUTPUT_FILE}`);
 
-    console.log('아이템(Items) 데이터 조립 중...');
-    
     const itemNameMap = new Map<number, string>();
-    itemNamesList.forEach(inm => {
-      if (inm.local_language_id === '3') {
-        itemNameMap.set(parseInt(inm.item_id), inm.name);
-      }
-    });
-
+    itemNamesList.forEach(inm => { if (inm.local_language_id === '3') itemNameMap.set(parseInt(inm.item_id), inm.name); });
     const itemEffectMap = new Map<number, string>();
-    itemProseList.forEach(ip => {
-      if (ip.local_language_id === '3') {
-        itemEffectMap.set(parseInt(ip.item_id), ip.short_effect || ip.effect);
-      }
-    });
-
+    itemProseList.forEach(ip => { if (ip.local_language_id === '3') itemEffectMap.set(parseInt(ip.item_id), ip.short_effect || ip.effect); });
     const finalItems: any[] = [];
     itemsList.forEach(item => {
       const id = parseInt(item.id);
       const nameKo = itemNameMap.get(id) || item.identifier;
-      const effect = itemEffectMap.get(id) || '';
-
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
-      const searchKey = `${nameKo}|${item.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`;
-
-      finalItems.push({
-        id,
-        nameKo,
-        nameEn: item.identifier,
-        searchKey,
-        effect,
-        category: parseInt(item.category_id)
-      });
+      finalItems.push({ id, nameKo, nameEn: item.identifier, searchKey: `${nameKo}|${item.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`, effect: itemEffectMap.get(id) || '', category: parseInt(item.category_id) });
     });
-
     fs.writeFileSync(DEFAULT_ITEMS_OUTPUT_FILE, JSON.stringify(finalItems, null, 0), 'utf-8');
-    console.log(`성공적으로 아이템 데이터가 생성되었습니다! (총 ${finalItems.length} 개) -> ${DEFAULT_ITEMS_OUTPUT_FILE}`);
 
+    console.log('모든 데이터 빌드가 완료되었습니다.');
   } catch (err) {
     console.error("데이터 생성 중 오류 발생:", err);
   }
 }
 
-// 스크립트로 직접 실행될 때만 호출
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   processData();
 }

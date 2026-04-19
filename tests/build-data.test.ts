@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test'; // vitest -> bun:test
 import * as fs from 'fs';
 import * as path from 'path';
 import { processData } from '../scripts/build-data';

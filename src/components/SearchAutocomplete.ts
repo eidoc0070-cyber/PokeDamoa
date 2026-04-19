@@ -12,10 +12,11 @@ interface AutocompleteOptions<T> {
     onSelect: (item: T) => void;
     initialValue?: string;
     renderItemExtra?: (item: T) => string;
+    getItemStyle?: (item: T) => Partial<CSSStyleDeclaration>;
 }
 
 export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
-    const { container, label, placeholder, data, getSearchKey, getDisplayName, getDisplaySub, onSelect, initialValue, renderItemExtra } = options;
+    let { container, label, placeholder, data, getSearchKey, getDisplayName, getDisplaySub, onSelect, initialValue, renderItemExtra, getItemStyle } = options;
 
     const wrapper = createElement('div', {
         style: { position: 'relative', marginBottom: '15px' }
@@ -48,7 +49,7 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
         }
     });
 
-    input.addEventListener('input', () => {
+    const renderDropdown = () => {
         const term = input.value.toLowerCase().trim();
         if (!term) {
             dropdown.style.display = 'none';
@@ -62,9 +63,15 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
             dropdown.innerHTML = '<div style="padding:10px; color:#888;">검색 결과가 없습니다.</div>';
         } else {
             matches.forEach(item => {
+                const customStyle = getItemStyle ? getItemStyle(item) : {};
                 const itemEl = createElement('div', {
                     className: 'autocomplete-item',
-                    style: { padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' },
+                    style: { 
+                        padding: '10px', 
+                        borderBottom: '1px solid #eee', 
+                        cursor: 'pointer',
+                        ...customStyle
+                    },
                     html: `
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span>
@@ -84,14 +91,17 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
             });
         }
         dropdown.style.display = 'block';
-    });
+    };
+
+    input.addEventListener('input', renderDropdown);
 
     // 외부 클릭 시 드롭다운 닫기
-    document.addEventListener('click', (e) => {
-        if (e.target !== input && e.target !== dropdown) {
+    const globalClickListener = (e: MouseEvent) => {
+        if (e.target !== input && e.target !== dropdown && !dropdown.contains(e.target as Node)) {
             dropdown.style.display = 'none';
         }
-    });
+    };
+    document.addEventListener('click', globalClickListener);
 
     wrapper.appendChild(labelEl);
     wrapper.appendChild(input);
@@ -99,6 +109,11 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
     container.appendChild(wrapper);
 
     return {
-        setValue: (val: string) => { input.value = val; }
+        setValue: (val: string) => { input.value = val; },
+        setData: (newData: T[]) => { data = newData; },
+        destroy: () => {
+            document.removeEventListener('click', globalClickListener);
+            wrapper.remove();
+        }
     };
 }

@@ -1,5 +1,6 @@
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, mock } from 'bun:test'; // vitest -> bun:test
+const vi = { fn: mock };
 import { Store } from '../src/state/store';
 
 describe('Store', () => {
