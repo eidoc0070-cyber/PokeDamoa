@@ -1,9 +1,10 @@
 import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
 import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
-import { calculateStat, calculateBulk, calculatePower } from '../../utils/pokemon-math.js';
+import { calculateStat, calculateBulk, calculatePower, getStatsForGen, getTypesForGen, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from '../../utils/pokemon-math.js';
 import { createAutocomplete } from '../../components/SearchAutocomplete.js';
 import { renderStatInputCard } from '../../components/StatInputCard.js'; // 모듈화된 카드 UI
+import { globalStore } from '../../state/store.js';
 
 const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
 type StatKey = typeof STAT_KEYS[number];
@@ -14,6 +15,11 @@ const STAT_NAMES: Record<StatKey, string> = {
 
 const STAT_COLORS: Record<StatKey, string> = {
     hp: '#e53935', atk: '#f57c00', def: '#fbc02d', spa: '#1e88e5', spd: '#4caf50', spe: '#e91e63'
+};
+
+// PokeAPI Generation IDs mapping
+const GEN_ID_MAP: Record<number | string, number> = {
+    1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 11, 9: 18, 'champions': 18
 };
 
 export async function renderStatCalculator(container: HTMLElement): Promise<() => void> {
@@ -30,6 +36,14 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
         let evs: Record<StatKey, number> = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
         let naturePlus: StatKey | 'none' = 'none';
         let natureMinus: StatKey | 'none' = 'none';
+
+        let moveAutocomplete: any = null;
+
+        const getSortedMoves = () => {
+            const gen = globalStore.getState().generation;
+            const targetGen = gen === 'champions' ? 9 : gen as number;
+            return getSortedMovesForPoke(movesData, selectedPoke, targetGen, m => m.category !== 'status');
+        };
 
         const calcStat = (key: StatKey) => {
             const base = baseStats[key];
@@ -60,37 +74,68 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             }
 
             container.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:20px;">
-                    <div class="card" style="margin-bottom:0;">
-                        <h2 class="card-title">실수값(실능) 계산기</h2>
-                        <div id="poke-autocomplete-container"></div>
-                        
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
-                            <label style="font-weight:bold; display:flex; align-items:center; gap:8px;">
-                                레벨 : <input type="number" id="level-input" class="form-control" value="${level}" min="1" max="100" style="width: 80px; text-align:center;" />
-                            </label>
-                            <button id="btn-nature-table" class="btn" style="color:var(--primary-color); border-color:var(--primary-color);">📋 성격표</button>
+                <div style="display:flex; flex-direction:column; gap:12px; padding: 5px;">
+                    <!-- Result & Top Search Section -->
+                    <div class="card" style="margin-bottom:0; padding:12px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                            <div id="poke-autocomplete-container" style="flex:1;"></div>
+                            ${selectedPoke ? `
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:52px; height:52px; image-rendering:pixelated; background:#f5f5f5; border-radius:8px; border:1px solid #eee;" />
+                                    <div style="display:flex; gap:2px;">
+                                        ${selectedPoke.types.map(t => `<span style="padding: 1px 4px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.6rem;">${TYPE_NAMES_KO[t]}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>
-                        
-                        ${selectedPoke ? `
-                        <div style="margin-top:20px; background:rgba(0,0,0,0.03); border-radius:12px; padding:15px; display:flex; align-items:center; gap:15px;">
-                            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:80px; height:80px; image-rendering:pixelated; background:#fff; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,0.1);" />
-                            <div>
-                                <h3 style="margin:0 0 5px 0;">${selectedPoke.nameKo}</h3>
-                                <div>
-                                    ${selectedPoke.types.map(t => `<span style="display:inline-block; padding: 4px 10px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:20px; font-size:0.8rem; margin-right:4px;">${TYPE_NAMES_KO[t]}</span>`).join('')}
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
+                            <label style="font-size:0.8rem; font-weight:bold; display:flex; align-items:center; gap:4px;">
+                                Lv <input type="number" id="level-input" class="form-control" value="${level}" min="1" max="100" style="width: 45px; text-align:center; padding:4px 0;" />
+                            </label>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; margin: 0 4px;">
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;">
+                                    <button class="btn-preset" data-preset="phys-atk" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#fff5f0; color:#e65100; border:1px solid #ffccbc; border-radius:6px; cursor:pointer;">물공 극보</button>
+                                    <button class="btn-preset" data-preset="spec-atk" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb; border-radius:6px; cursor:pointer;">특공 극보</button>
+                                    <button class="btn-preset" data-preset="phys-def" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#fffde7; color:#f9a825; border:1px solid #fff9c4; border-radius:6px; cursor:pointer;">물방 극보</button>
+                                    <button class="btn-preset" data-preset="spec-def" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#f1f8e9; color:#2e7d32; border:1px solid #dcedc8; border-radius:6px; cursor:pointer;">특방 극보</button>
+                                </div>
+                                <button id="btn-reset" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#f5f5f5; color:#616161; border:1px solid #e0e0e0; border-radius:6px; cursor:pointer;">초기화</button>
+                            </div>
+
+                            <button id="btn-nature-table" class="btn" style="padding:8px 6px; font-size:0.75rem; color:var(--primary-color); border-color:var(--primary-color); min-width:65px;">📋 성격표</button>
+                        </div>
+
+                        <div id="move-autocomplete-container" style="margin-bottom:12px;"></div>
+
+                        <!-- Result Dashboard -->
+                        <div style="background:rgba(0,0,0,0.04); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px; border:1px solid rgba(0,0,0,0.05);">
+                            <div style="text-align:center;">
+                                <div style="font-size:0.75rem; color:#666; margin-bottom:2px; font-weight:bold;">결정력</div>
+                                <div style="font-size:1.8rem; font-weight:900; color:#f57c00; line-height:1.2;">${powerVal.toLocaleString()}</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; border-top:1px solid rgba(0,0,0,0.1); padding-top:10px;">
+                                <div style="text-align:center;">
+                                    <div style="font-size:0.7rem; color:#666; margin-bottom:2px;">물리내구</div>
+                                    <div style="font-size:1.1rem; font-weight:bold; color:var(--text-color);">${physBulk.toLocaleString()}</div>
+                                </div>
+                                <div style="text-align:center;">
+                                    <div style="font-size:0.7rem; color:#666; margin-bottom:2px;">특수내구</div>
+                                    <div style="font-size:1.1rem; font-weight:bold; color:var(--text-color);">${specBulk.toLocaleString()}</div>
                                 </div>
                             </div>
-                        </div>` : ''}
+                        </div>
                     </div>
 
+                    <!-- Bottom Input Section -->
                     <div style="background:transparent;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 5px;">
-                            <h3 style="margin:0; font-size:1.1rem; color:var(--text-color);">능력치 세팅 (카드뷰)</h3>
-                            <span style="font-size:0.9rem; font-weight:bold; padding:4px 10px; border-radius:20px; background:${evTotal > 510 ? '#ffebee' : '#e8f5e9'}; color:${evTotal > 510 ? '#d32f2f' : '#2e7d32'}; box-shadow:0 1px 3px rgba(0,0,0,0.1);">노력치: ${evTotal}/510</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 5px;">
+                            <h3 style="margin:0; font-size:1rem; color:var(--text-color);">능력치 세팅</h3>
+                            <span style="font-size:0.8rem; font-weight:bold; padding:2px 10px; border-radius:15px; background:${evTotal > 510 ? '#ffebee' : '#e8f5e9'}; color:${evTotal > 510 ? '#d32f2f' : '#2e7d32'}; border:1px solid ${evTotal > 510 ? '#ffcdd2' : '#c8e6c9'};">노력치: ${evTotal}/510</span>
                         </div>
                         
-                        <div style="display:flex; flex-direction:column;">
+                        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                             ${STAT_KEYS.map(key => {
                                 const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : calcStat(key)))));
                                 return renderStatInputCard({
@@ -105,29 +150,6 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                                     realVal
                                 });
                             }).join('')}
-                        </div>
-                    </div>
-
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:15px;">
-                        <div class="card">
-                            <h3 style="margin-top:0; color:var(--text-color);">결정력 계산</h3>
-                            <div id="move-autocomplete-container"></div>
-                            <div style="font-size:1.4rem; font-weight:bold; color:#f57c00; text-align:center; padding:15px; background:rgba(245,124,0,0.1); border-radius:12px; margin-top:15px;">
-                                결정력: ${powerVal.toLocaleString()}
-                            </div>
-                        </div>
-                        <div class="card">
-                            <h3 style="margin-top:0; color:var(--text-color);">내구력 계산</h3>
-                            <div style="display:flex; flex-direction:column; gap:10px;">
-                                <div style="display:flex; justify-content:space-between; padding:15px; background:rgba(0,0,0,0.03); border-radius:12px;">
-                                    <span style="color:var(--text-muted);">물리내구</span>
-                                    <strong style="font-size:1.2rem;">${physBulk.toLocaleString()}</strong>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; padding:15px; background:rgba(0,0,0,0.03); border-radius:12px;">
-                                    <span style="color:var(--text-muted);">특수내구</span>
-                                    <strong style="font-size:1.2rem;">${specBulk.toLocaleString()}</strong>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -166,20 +188,64 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 label: '포켓몬 검색', placeholder: '이름 입력', data: fullData,
                 initialValue: selectedPoke?.nameKo,
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
-                onSelect: p => { selectedPoke = p; baseStats = { ...p.stats as any }; renderUI(); }
+                onSelect: p => { 
+                    selectedPoke = p; 
+                    const gen = globalStore.getState().generation;
+                    const targetGen = gen === 'champions' ? 9 : gen as number;
+                    baseStats = { ...getStatsForGen(p, targetGen) as any }; 
+                    if (moveAutocomplete) {
+                        moveAutocomplete.setData(getSortedMoves());
+                        moveAutocomplete.setOptions({
+                            getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
+                            renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                        });
+                    }
+                    renderUI(); 
+                }
             });
 
-            createAutocomplete({
+            const gen = globalStore.getState().generation;
+            const targetGen = gen === 'champions' ? 9 : gen as number;
+            moveAutocomplete = createAutocomplete({
                 container: container.querySelector('#move-autocomplete-container')!,
-                label: '기술 검색', placeholder: '이름 입력', data: movesData.filter(m => m.category !== 'status'),
+                label: '기술 검색', placeholder: '이름 입력', 
+                data: getSortedMoves(),
                 initialValue: selectedMove?.nameKo,
                 getSearchKey: m => m.searchKey, getDisplayName: m => m.nameKo, getDisplaySub: m => `(위력 ${m.power})`,
                 onSelect: m => { selectedMove = m; renderUI(); },
-                renderItemExtra: m => `<span style="display:inline-block; width:12px; height:12px; background:${TYPE_COLORS[m.type]}; border-radius:2px;"></span>`
+                getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
+                renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
             });
 
             container.querySelector('#level-input')?.addEventListener('change', (e) => {
                 level = parseInt((e.target as HTMLInputElement).value) || 50; renderUI();
+            });
+
+            container.querySelectorAll('.btn-preset').forEach(el => el.addEventListener('click', (e) => {
+                const preset = (e.currentTarget as HTMLElement).getAttribute('data-preset');
+                
+                if (preset === 'phys-atk') {
+                    evs.atk = 252;
+                    naturePlus = 'atk'; natureMinus = 'spa';
+                } else if (preset === 'spec-atk') {
+                    evs.spa = 252;
+                    naturePlus = 'spa'; natureMinus = 'atk';
+                } else if (preset === 'phys-def') {
+                    evs.def = 252;
+                    naturePlus = 'def'; natureMinus = 'spa';
+                } else if (preset === 'spec-def') {
+                    evs.spd = 252;
+                    naturePlus = 'spd'; natureMinus = 'atk';
+                }
+                renderUI();
+            }));
+
+            container.querySelector('#btn-reset')?.addEventListener('click', () => {
+                evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                ivs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+                naturePlus = 'none';
+                natureMinus = 'none';
+                renderUI();
             });
 
             container.querySelectorAll('.base-stat-input').forEach(el => el.addEventListener('change', (e) => {
@@ -209,7 +275,23 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             container.querySelector('#modal-close')?.addEventListener('click', () => container.querySelector<HTMLElement>('#nature-modal')!.style.display = 'none');
         };
 
+        const unsubscribe = globalStore.subscribe(() => {
+            if (moveAutocomplete) {
+                const gen = globalStore.getState().generation;
+                const targetGen = gen === 'champions' ? 9 : gen as number;
+                moveAutocomplete.setData(getSortedMoves());
+                moveAutocomplete.setOptions({
+                    getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
+                    renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                });
+            }
+        });
+
         renderUI();
+        
+        return () => {
+            unsubscribe();
+        };
     } catch (err) {
         container.innerHTML = `<div class="card"><p style="color:red; text-align:center;">오류: ${err}</p></div>`;
     }

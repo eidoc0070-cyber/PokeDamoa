@@ -64,21 +64,24 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
         } else {
             matches.forEach(item => {
                 const customStyle = getItemStyle ? getItemStyle(item) : {};
+                const extraHtml = renderItemExtra ? renderItemExtra(item) : '';
+                
                 const itemEl = createElement('div', {
                     className: 'autocomplete-item',
                     style: { 
-                        padding: '10px', 
+                        padding: '12px 10px', 
                         borderBottom: '1px solid #eee', 
                         cursor: 'pointer',
+                        transition: 'background 0.2s',
                         ...customStyle
                     },
                     html: `
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>
-                                <strong>${getDisplayName(item)}</strong>
-                                <span style="color:#888; font-size:0.8em; margin-left:5px;">${getDisplaySub(item)}</span>
-                            </span>
-                            ${renderItemExtra ? renderItemExtra(item) : ''}
+                            <div style="display:flex; flex-direction:column;">
+                                <strong style="font-size:1rem;">${getDisplayName(item)}</strong>
+                                <span style="color:#888; font-size:0.8rem;">${getDisplaySub(item)}</span>
+                            </div>
+                            ${extraHtml}
                         </div>
                     `
                 });
@@ -111,6 +114,12 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
     return {
         setValue: (val: string) => { input.value = val; },
         setData: (newData: T[]) => { data = newData; },
+        setOptions: (newOptions: Partial<AutocompleteOptions<T>>) => {
+            if (newOptions.getItemStyle) getItemStyle = newOptions.getItemStyle;
+            if (newOptions.renderItemExtra) renderItemExtra = newOptions.renderItemExtra;
+            if (newOptions.label) labelEl.textContent = newOptions.label;
+            if (newOptions.placeholder) input.placeholder = newOptions.placeholder;
+        },
         destroy: () => {
             document.removeEventListener('click', globalClickListener);
             wrapper.remove();

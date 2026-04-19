@@ -2,7 +2,7 @@ import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
 import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO, TYPE_MATCHUPS, POKEMON_TYPES } from '../../data/constants.js';
 import type { PokemonType } from '../../data/constants.js';
-import { calculateStat, calculateBaseDamage, calculateDamageRolls, getRankMultiplier, getStatsForGen, getTypesForGen } from '../../utils/pokemon-math.js';
+import { calculateStat, calculateBaseDamage, calculateDamageRolls, getRankMultiplier, getStatsForGen, getTypesForGen, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from '../../utils/pokemon-math.js';
 import { createAutocomplete } from '../../components/SearchAutocomplete.js';
 import { globalStore } from '../../state/store.js';
 import { renderAccordion } from '../../components/Accordion.js'; // 모듈화된 아코디언 적용
@@ -34,18 +34,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         const getSortedMoves = (poke: PokemonData | null) => {
             const currentGen = globalStore.getState().generation;
             const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
-            
-            if (!poke) return fullMoves.filter(m => m.power > 0);
-
-            const learnset = poke.learnsets[targetGen] || [];
-            return [...fullMoves]
-                .filter(m => m.power > 0)
-                .sort((a, b) => {
-                    const aCan = learnset.includes(a.id) ? 1 : 0;
-                    const bCan = learnset.includes(b.id) ? 1 : 0;
-                    if (aCan !== bCan) return bCan - aCan;
-                    return a.nameKo.localeCompare(b.nameKo);
-                });
+            return getSortedMovesForPoke(fullMoves, poke, targetGen, m => m.power > 0);
         };
 
         const updateAtkStats = () => {
@@ -178,7 +167,13 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                     atkPoke = p; 
                     updateAtkStats(); 
                     if (moveAutocomplete) {
+                        const currentGen = globalStore.getState().generation;
+                        const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
                         moveAutocomplete.setData(getSortedMoves(p));
+                        moveAutocomplete.setOptions({
+                            getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
+                            renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
+                        });
                     }
                     renderUI(); 
                 }
@@ -200,15 +195,9 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 initialValue: selectedMove?.nameKo,
                 getSearchKey: m => m.searchKey, 
                 getDisplayName: m => m.nameKo, 
-                getDisplaySub: m => `(위력 ${m.power || '-'})`,
-                getItemStyle: m => {
-                    if (!atkPoke) return {};
-                    const learnset = atkPoke.learnsets[targetGen] || [];
-                    if (learnset.includes(m.id)) {
-                        return { background: '#fff9c4', borderLeft: '4px solid #fbc02d' }; // 강조 스타일
-                    }
-                    return {};
-                },
+                getDisplaySub: m => `(위력 ${m.power || '-'}, ${TYPE_NAMES_KO[m.type as PokemonType]})`,
+                getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
+                renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS),
                 onSelect: m => { 
                     selectedMove = m; movePower = m.power || 0; moveType = m.type; moveCategory = m.category as any;
                     if (atkPoke) {
@@ -239,6 +228,15 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         const unsubscribe = globalStore.subscribe(() => {
             updateAtkStats();
             updateDefStats();
+            if (moveAutocomplete) {
+                const currentGen = globalStore.getState().generation;
+                const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+                moveAutocomplete.setData(getSortedMoves(atkPoke));
+                moveAutocomplete.setOptions({
+                    getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
+                    renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
+                });
+            }
             renderUI();
         });
 

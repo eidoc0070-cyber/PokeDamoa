@@ -256,3 +256,62 @@ export function getMoveForGen(m: any, genId: number) {
     
     return { ...m, power, pp, accuracy, type };
 }
+
+/**
+ * 특정 세대에서 포켓몬이 배울 수 있는 기술 ID 목록을 가져옵니다.
+ */
+export function getLearnableMoveIds(poke: any | null, genId: number): Set<number> {
+    if (!poke) return new Set();
+    // 세대 ID 매핑 (문자열인 경우 등 대비)
+    const targetGen = typeof genId === 'number' ? genId : 9;
+    return new Set(poke.learnsets[targetGen] || []);
+}
+
+/**
+ * 포켓몬이 배우는 기술을 상단으로 정렬한 기술 목록을 반환합니다.
+ */
+export function getSortedMovesForPoke(moves: any[], poke: any | null, genId: number, filterFn?: (m: any) => boolean) {
+    const learnableIds = getLearnableMoveIds(poke, genId);
+    let filtered = moves;
+    if (filterFn) {
+        filtered = moves.filter(filterFn);
+    }
+
+    return [...filtered].sort((a, b) => {
+        const aLearnable = learnableIds.has(a.id);
+        const bLearnable = learnableIds.has(b.id);
+        if (aLearnable && !bLearnable) return -1;
+        if (!aLearnable && bLearnable) return 1;
+        return a.nameKo.localeCompare(b.nameKo);
+    });
+}
+
+/**
+ * Autocomplete용 기술 아이템 스타일을 반환합니다.
+ */
+export function getMoveItemStyle(move: any, poke: any | null, genId: number) {
+    if (!poke) return {};
+    const learnableIds = getLearnableMoveIds(poke, genId);
+    if (learnableIds.has(move.id)) {
+        return { 
+            background: 'rgba(255, 249, 196, 0.4)', 
+            borderLeft: '4px solid #fbc02d'
+        };
+    }
+    return {};
+}
+
+/**
+ * Autocomplete용 기술 아이템 추가 정보를 반환합니다. (배지 등)
+ */
+export function renderMoveItemExtra(move: any, poke: any | null, genId: number, typeColors: Record<string, string>) {
+    const learnableIds = getLearnableMoveIds(poke, genId);
+    const isLearnable = learnableIds.has(move.id);
+    
+    return `
+        <div style="display:flex; align-items:center; gap:5px;">
+            ${isLearnable ? `<span style="background:#fbc02d; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:10px; font-weight:bold; white-space:nowrap;">습득 가능</span>` : ''}
+            <span style="display:inline-block; width:12px; height:12px; background:${typeColors[move.type] || '#ccc'}; border-radius:3px;"></span>
+        </div>
+    `;
+}
