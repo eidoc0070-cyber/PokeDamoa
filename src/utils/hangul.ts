@@ -23,8 +23,6 @@ const COMPLEX_JAMO: Record<string, string> = {
 
 /**
  * 문자열을 자소 단위로 완전히 분해합니다.
- * @param str 분해할 문자열
- * @param fullyDecompose 복합 자모(ㄲ, ㄳ 등)를 더 잘게 분해할지 여부
  */
 export function disassembleHangul(str: string, fullyDecompose: boolean = false): { disassembled: string; initialConsonants: string } {
     let disassembled = '';
@@ -36,7 +34,6 @@ export function disassembleHangul(str: string, fullyDecompose: boolean = false):
         const char = normalized.charAt(i);
         const charCode = normalized.charCodeAt(i);
 
-        // 한글 말마디 (Syllables) 범위: 0xAC00 ~ 0xD7A3
         if (charCode >= 44032 && charCode <= 55203) {
             const code = charCode - 44032;
             const choIdx = Math.floor(code / 588);
@@ -56,15 +53,13 @@ export function disassembleHangul(str: string, fullyDecompose: boolean = false):
             disassembled += cho + jung + jong;
             initialConsonants += cho;
         } 
-        // 한글 자모 (Compatibility Jamo) 범위: 0x3131 ~ 0x318E
         else if (charCode >= 0x3131 && charCode <= 0x318E) {
             const decomposed = fullyDecompose ? (COMPLEX_JAMO[char] || char) : char;
             disassembled += decomposed;
-            // 자음인 경우에만 초성으로 취급 (초성 범위에 있는 것들)
             if (CHO.includes(char)) {
                 initialConsonants += decomposed;
             } else {
-                initialConsonants += char;
+                initialConsonants += decomposed; // 초성이 아닌 자모 단독 입력 시에도 분해 적용
             }
         }
         else {
@@ -77,45 +72,159 @@ export function disassembleHangul(str: string, fullyDecompose: boolean = false):
 }
 
 /**
- * 한글 문자열에서 초성만 추출합니다.
+ * 최적화된 Levenshtein Distance 알고리즘 (Early Exit 적용)
  */
-export function getChosung(str: string): string {
-    return disassembleHangul(str).initialConsonants;
+export function getLevenshteinDistance(a: string, b: string, limit: number): number {
+    const n = a.length;
+    const m = b.length;
+    if (Math.abs(n - m) > limit) return limit + 1;
+
+    let prev = Array.from({ length: m + 1 }, (_, i) => i);
+    let curr = new Array(m + 1);
+
+    for (let i = 1; i <= n; i++) {
+        curr[0] = i;
+        let minInRow = curr[0];
+        for (let j = 1; j <= m; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+            if (curr[j] < minInRow) minInRow = curr[j];
+        }
+        if (minInRow > limit) return limit + 1;
+        [prev, curr] = [curr, prev];
+    }
+    return prev[m];
 }
 
 /**
  * 검색 대상 문자열이 쿼리를 포함하는지 확인합니다. (자소 분리 검색 지원)
+ * @param target 대상 문자열 (이미 searchKey 형태일 수 있음)
+ * @param query 검색어
+ * @param allowFuzzy 오타 허용 여부
  */
-export function hangulIncludes(target: string, query: string): boolean {
-    const trimmedQuery = query.toLowerCase().trim();
-    if (!trimmedQuery) return true;
+export function hangulIncludes(target: string, query: string, allowFuzzy: boolean = true): boolean {
+    const term = query.toLowerCase().trim();
+    if (!term) return true;
+    
+    // searchKey 형태(이름|영문|분해|초성)인지 확인
+    let nameKo = target;
+    let disassembled = '';
+    let chosung = '';
+    
+    if (target.includes('|')) {
+        const parts = target.split('|');
+        nameKo = parts[0];
+        disassembled = parts[2] || '';
+        chosung = parts[3] || '';
+    }
 
-    // 1. 단순 포함 여부 확인 (원본 그대로 비교)
-    const normalizedTarget = target.toLowerCase();
-    if (normalizedTarget.includes(trimmedQuery)) return true;
+    const targetLower = nameKo.toLowerCase();
+    if (targetLower.includes(term)) return true;
 
-    // 2. 쿼리와 대상을 자소 분리하여 비교
-    // target이 이미 searchKey 형태일 수 있으므로(피카츄|pikachu|ㅍㅣㅋㅏㅊㅠ|ㅍㅋㅊ),
-    // target에 대해 disassemble을 다시 해도 결과는 안정적입니다.
-    const { disassembled: targetDis, initialConsonants: targetCho } = disassembleHangul(normalizedTarget);
-    const { disassembled: queryDis, initialConsonants: queryCho } = disassembleHangul(trimmedQuery);
+    // 일반 분해 비교
+    const queryInfo = disassembleHangul(term);
+    if (!disassembled) {
+        const targetInfo = disassembleHangul(targetLower);
+        disassembled = targetInfo.disassembled;
+        chosung = targetInfo.initialConsonants;
+    }
 
-    // 자소 분리된 문자열 비교
-    if (targetDis.includes(queryDis)) return true;
-
-    // 초성 검색 확인 (사용자가 초성만 입력했을 경우)
-    // queryCho와 queryDis가 같으면(즉, 쿼리가 자음으로만 구성되었으면) 초성 검색으로 간주
-    if (queryDis === queryCho && targetCho.includes(queryCho)) return true;
+    if (disassembled.includes(queryInfo.disassembled)) return true;
+    if (chosung.includes(queryInfo.disassembled)) return true;
 
     // 완전 분해(fullyDecompose) 비교 (ㄲ -> ㄱㄱ 등)
-    const { disassembled: targetFull, initialConsonants: targetFullCho } = disassembleHangul(normalizedTarget, true);
-    const { disassembled: queryFull, initialConsonants: queryFullCho } = disassembleHangul(trimmedQuery, true);
-    
+    const queryFull = disassembleHangul(term, true).disassembled;
+    const targetFull = disassembleHangul(targetLower, true).disassembled;
     if (targetFull.includes(queryFull)) return true;
 
-    // 완전 분해된 초성 검색 확인
-    if (queryFull === queryFullCho && targetFullCho.includes(queryFullCho)) return true;
+    // 오타 허용 (Fuzzy)
+    if (allowFuzzy && term.length >= 2) {
+        const queryDis = queryInfo.disassembled;
+        const maxDist = Math.max(1, Math.min(2, Math.floor(queryDis.length / 3)));
+        
+        // 전체 또는 부분 오타 허용 확인
+        const dist = getLevenshteinDistance(disassembled, queryDis, maxDist);
+        if (dist <= maxDist) return true;
+        
+        const subDist = getLevenshteinDistance(disassembled.substring(0, queryDis.length), queryDis, maxDist);
+        if (subDist <= maxDist) return true;
+    }
 
     return false;
+}
+
+export interface SearchResult<T> {
+    item: T;
+    score: number; // 높을수록 일치도가 높음 (100: 정확히 일치, 0: 불일치)
+}
+
+/**
+ * 자소 분리 및 오타 허용 기반의 통합 검색 함수
+ */
+export function searchFuzzy<T>(
+    data: T[],
+    query: string,
+    getSearchFields: (item: T) => { nameKo: string; nameEn: string; disassembled: string; chosung: string }
+): SearchResult<T>[] {
+    const term = query.toLowerCase().trim();
+    if (!term) return data.map(item => ({ item, score: 0 }));
+
+    const queryInfo = disassembleHangul(term);
+    const queryFull = disassembleHangul(term, true).disassembled;
+    const isChosungQuery = term.split('').every(char => CHO.includes(char) || (char >= 'ㄱ' && char <= 'ㅎ' && !JUNG.includes(char)));
+
+    return data
+        .map(item => {
+            const { nameKo, nameEn, disassembled, chosung } = getSearchFields(item);
+            const targetKo = nameKo.toLowerCase();
+            const targetEn = nameEn.toLowerCase();
+            
+            let score = 0;
+
+            // 1. 정확한 일치
+            if (targetKo === term || targetEn === term) score = 100;
+            // 2. 시작 부분 일치
+            else if (targetKo.startsWith(term) || targetEn.startsWith(term)) score = 80;
+            // 3. 자소 분리 시작 부분 일치
+            else if (disassembled && disassembled.startsWith(queryInfo.disassembled)) score = 70;
+            // 4. 초성 일치
+            else if (isChosungQuery && chosung && chosung.includes(queryInfo.disassembled)) score = 60;
+            // 5. 단순 포함
+            else if (targetKo.includes(term) || targetEn.includes(term)) score = 50;
+            // 6. 자소 분리 포함
+            else if (disassembled && disassembled.includes(queryInfo.disassembled)) score = 40;
+            
+            // 아직 점수가 없거나 낮은 경우 오타 허용 로직 적용
+            if (score < 40 && term.length >= 2) {
+                const queryDis = queryInfo.disassembled;
+                const targetDis = disassembled || disassembleHangul(targetKo).disassembled;
+                
+                const maxDist = Math.max(1, Math.min(2, Math.floor(queryDis.length / 3)));
+                
+                // 전체 비교
+                const dist = getLevenshteinDistance(targetDis, queryDis, maxDist);
+                if (dist <= maxDist) {
+                    score = Math.max(score, 35 - dist);
+                } 
+                // 부분(앞부분) 비교
+                else {
+                    const targetSub = targetDis.substring(0, queryDis.length);
+                    const subDist = getLevenshteinDistance(targetSub, queryDis, maxDist);
+                    if (subDist <= maxDist) {
+                        score = Math.max(score, 30 - subDist);
+                    }
+                }
+
+                // 완전 분해(ㄲ->ㄱㄱ) 포함 여부도 최종 확인
+                if (score < 38) {
+                    const targetFull = disassembleHangul(targetKo, true).disassembled;
+                    if (targetFull.includes(queryFull)) score = 38;
+                }
+            }
+
+            return { item, score };
+        })
+        .filter(res => res.score > 0)
+        .sort((a, b) => b.score - a.score);
 }
 

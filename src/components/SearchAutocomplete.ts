@@ -1,4 +1,4 @@
-import { hangulIncludes } from '../utils/hangul.js';
+import { hangulIncludes, searchFuzzy } from '../utils/hangul.js';
 import { createElement } from '../utils/dom.js';
 
 interface AutocompleteOptions<T> {
@@ -56,7 +56,29 @@ export function createAutocomplete<T>(options: AutocompleteOptions<T>) {
             return;
         }
 
-        const matches = data.filter(item => hangulIncludes(getSearchKey(item), term)).slice(0, 30);
+        // searchFuzzy를 사용하여 오타 허용 및 검색 순위 최적화
+        const results = searchFuzzy(data, term, (item: any) => {
+            // JSON 구조 변경안이 적용된 경우 (d, c 필드 직접 사용)
+            if (item.d && item.c) {
+                return { 
+                    nameKo: item.nameKo || '', 
+                    nameEn: item.nameEn || '', 
+                    disassembled: item.d, 
+                    chosung: item.c 
+                };
+            }
+            
+            const searchKey = getSearchKey(item);
+            // 기존 searchKey가 pipe(|)로 구분된 경우 분리하여 사용
+            if (searchKey.includes('|')) {
+                const [nameKo, nameEn, disassembled, chosung] = searchKey.split('|');
+                return { nameKo, nameEn, disassembled, chosung };
+            }
+            // 일반 문자열인 경우 (하위 호환성)
+            return { nameKo: searchKey, nameEn: '', disassembled: '', chosung: '' };
+        });
+
+        const matches = results.slice(0, 30).map(res => res.item);
         
         dropdown.innerHTML = '';
         if (matches.length === 0) {

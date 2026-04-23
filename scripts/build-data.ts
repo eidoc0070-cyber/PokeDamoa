@@ -291,6 +291,8 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       finalPokedex.push({
         id, speciesId: sId, nameKo, nameEn: p.identifier,
         searchKey: `${nameKo}|${p.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        d: disassembled,
+        c: initialConsonants,
         types: (pokemonToTypesMap.get(id) || []).filter(Boolean),
         typesPast: pokemonToTypesPastMap.get(id) || [],
         stats: pokemonToStatsMap.get(id) || getStatsObj(),
@@ -333,7 +335,10 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       const nameKo = moveNameMap.get(id) || m.identifier;
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
       finalMoves.push({
-        id, nameKo, nameEn: m.identifier, searchKey: `${nameKo}|${m.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        id, nameKo, nameEn: m.identifier, 
+        searchKey: `${nameKo}|${m.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        d: disassembled,
+        c: initialConsonants,
         power: parseInt(m.power) || 0, pp: parseInt(m.pp) || 0, accuracy: parseInt(m.accuracy) || 0,
         type: typeIdMap.get(parseInt(m.type_id)) || 'unknown',
         category: parseInt(m.damage_class_id) === 2 ? 'physical' : parseInt(m.damage_class_id) === 3 ? 'special' : 'status',
@@ -353,7 +358,13 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       if (id >= 10000) return;
       const nameKo = abilityNameMap.get(id) || a.identifier;
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
-      finalAbilities.push({ id, nameKo, nameEn: a.identifier, searchKey: `${nameKo}|${a.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`, effect: abilityEffectMap.get(id) || '' });
+      finalAbilities.push({ 
+        id, nameKo, nameEn: a.identifier, 
+        searchKey: `${nameKo}|${a.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        d: disassembled,
+        c: initialConsonants,
+        effect: abilityEffectMap.get(id) || '' 
+      });
     });
     fs.writeFileSync(DEFAULT_ABILITIES_OUTPUT_FILE, JSON.stringify(finalAbilities, null, 0), 'utf-8');
 
@@ -366,7 +377,14 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       const id = parseInt(item.id);
       const nameKo = itemNameMap.get(id) || item.identifier;
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
-      finalItems.push({ id, nameKo, nameEn: item.identifier, searchKey: `${nameKo}|${item.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`, effect: itemEffectMap.get(id) || '', category: parseInt(item.category_id) });
+      finalItems.push({ 
+        id, nameKo, nameEn: item.identifier, 
+        searchKey: `${nameKo}|${item.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        d: disassembled,
+        c: initialConsonants,
+        effect: itemEffectMap.get(id) || '', 
+        category: parseInt(item.category_id) 
+      });
     });
     fs.writeFileSync(DEFAULT_ITEMS_OUTPUT_FILE, JSON.stringify(finalItems, null, 0), 'utf-8');
 
