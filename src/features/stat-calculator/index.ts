@@ -57,7 +57,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             return calculateStat(base, iv, ev, level, key === 'hp', natureMod);
         };
 
-        const renderUI = () => {
+        const renderStructure = () => {
             const evTotal = Object.values(evs).reduce((a, b) => a + b, 0);
             const hpReal = calcStat('hp');
             const atkReal = calcStat('atk');
@@ -66,27 +66,13 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             const spdReal = calcStat('spd');
             const physBulk = calculateBulk(hpReal, defReal);
             const specBulk = calculateBulk(hpReal, spdReal);
-            let powerVal = 0;
-            if (selectedMove && selectedPoke) {
-                const stab = selectedPoke.types.includes(selectedMove.type) ? 1.5 : 1.0;
-                const statUsed = selectedMove.category === 'special' ? spaReal : atkReal;
-                powerVal = calculatePower(statUsed, selectedMove.power, stab);
-            }
 
             container.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:12px; padding: 5px;">
-                    <!-- Result & Top Search Section -->
                     <div class="card" style="margin-bottom:0; padding:12px;">
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
                             <div id="poke-autocomplete-container" style="flex:1;"></div>
-                            ${selectedPoke ? `
-                                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-                                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:52px; height:52px; image-rendering:pixelated; background:#f5f5f5; border-radius:8px; border:1px solid #eee;" />
-                                    <div style="display:flex; gap:2px;">
-                                        ${selectedPoke.types.map(t => `<span style="padding: 1px 4px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.6rem;">${TYPE_NAMES_KO[t]}</span>`).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
+                            <div id="poke-sprite-container"></div>
                         </div>
 
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
@@ -109,47 +95,37 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
 
                         <div id="move-autocomplete-container" style="margin-bottom:12px;"></div>
 
-                        <!-- Result Dashboard -->
                         <div style="background:rgba(0,0,0,0.04); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px; border:1px solid rgba(0,0,0,0.05);">
                             <div style="text-align:center;">
                                 <div style="font-size:0.75rem; color:#666; margin-bottom:2px; font-weight:bold;">결정력</div>
-                                <div style="font-size:1.8rem; font-weight:900; color:#f57c00; line-height:1.2;">${powerVal.toLocaleString()}</div>
+                                <div id="power-val" style="font-size:1.8rem; font-weight:900; color:#f57c00; line-height:1.2;">0</div>
                             </div>
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; border-top:1px solid rgba(0,0,0,0.1); padding-top:10px;">
                                 <div style="text-align:center;">
                                     <div style="font-size:0.7rem; color:#666; margin-bottom:2px;">물리내구</div>
-                                    <div style="font-size:1.1rem; font-weight:bold; color:var(--text-color);">${physBulk.toLocaleString()}</div>
+                                    <div id="phys-bulk" style="font-size:1.1rem; font-weight:bold; color:var(--text-color);">${physBulk.toLocaleString()}</div>
                                 </div>
                                 <div style="text-align:center;">
                                     <div style="font-size:0.7rem; color:#666; margin-bottom:2px;">특수내구</div>
-                                    <div style="font-size:1.1rem; font-weight:bold; color:var(--text-color);">${specBulk.toLocaleString()}</div>
+                                    <div id="spec-bulk" style="font-size:1.1rem; font-weight:bold; color:var(--text-color);">${specBulk.toLocaleString()}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Bottom Input Section -->
-                    <div style="background:transparent;">
+                    <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 5px;">
                             <h3 style="margin:0; font-size:1rem; color:var(--text-color);">능력치 세팅</h3>
-                            <span style="font-size:0.8rem; font-weight:bold; padding:2px 10px; border-radius:15px; background:${evTotal > 510 ? '#ffebee' : '#e8f5e9'}; color:${evTotal > 510 ? '#d32f2f' : '#2e7d32'}; border:1px solid ${evTotal > 510 ? '#ffcdd2' : '#c8e6c9'};">노력치: ${evTotal}/510</span>
+                            <span id="ev-total-display" style="font-size:0.8rem; font-weight:bold; padding:2px 10px; border-radius:15px; background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;">노력치: ${evTotal}/510</span>
                         </div>
                         
-                        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                            ${STAT_KEYS.map(key => {
-                                const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : calcStat(key)))));
-                                return renderStatInputCard({
-                                    statKey: key,
-                                    statName: STAT_NAMES[key],
-                                    statColor: STAT_COLORS[key],
-                                    base: baseStats[key],
-                                    iv: ivs[key],
-                                    ev: evs[key],
-                                    naturePlus: naturePlus === key,
-                                    natureMinus: natureMinus === key,
-                                    realVal
-                                });
-                            }).join('')}
+                        <div id="stat-cards-container" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            ${STAT_KEYS.map(key => renderStatInputCard({
+                                statKey: key, statName: STAT_NAMES[key], statColor: STAT_COLORS[key],
+                                base: baseStats[key], iv: ivs[key], ev: evs[key],
+                                naturePlus: naturePlus === key, natureMinus: natureMinus === key,
+                                realVal: calcStat(key)
+                            })).join('')}
                         </div>
                     </div>
                 </div>
@@ -158,28 +134,80 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                     <div style="background:var(--surface-color); width:90%; max-width:400px; border-radius:16px; padding:25px; position:relative; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
                         <button id="modal-close" style="position:absolute; top:15px; right:15px; border:none; background:rgba(0,0,0,0.05); width:30px; height:30px; border-radius:50%; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
                         <h3 style="margin-top:0; color:var(--text-color);">성격 보정표</h3>
-                        <p style="font-size:0.9rem; color:var(--text-muted);">성격에 따라 특정 능력치가 증감합니다. (HP 제외)</p>
                         <div style="overflow:hidden; border-radius:8px; border:1px solid var(--border-color);">
                             <table style="width:100%; border-collapse:collapse; font-size:0.9rem; text-align:center;">
-                                <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-color);">
-                                    <th style="padding:10px;">성격</th>
-                                    <th style="padding:10px; color:#d32f2f;">증가(+)</th>
-                                    <th style="padding:10px; color:#1976d2;">감소(-)</th>
-                                </tr>
+                                <tr style="background:rgba(0,0,0,0.05); border-bottom:1px solid var(--border-color);"><th style="padding:10px;">성격</th><th style="padding:10px; color:#d32f2f;">증가(+)</th><th style="padding:10px; color:#1976d2;">감소(-)</th></tr>
                                 <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">고집</td><td style="color:#d32f2f;">공격</td><td style="color:#1976d2;">특공</td></tr>
                                 <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">명랑</td><td style="color:#d32f2f;">스피드</td><td style="color:#1976d2;">특공</td></tr>
                                 <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">겁쟁이</td><td style="color:#d32f2f;">스피드</td><td style="color:#1976d2;">공격</td></tr>
                                 <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">조심</td><td style="color:#d32f2f;">특공</td><td style="color:#1976d2;">공격</td></tr>
-                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">차분</td><td style="color:#d32f2f;">특방</td><td style="color:#1976d2;">공격</td></tr>
-                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">신중</td><td style="color:#d32f2f;">특방</td><td style="color:#1976d2;">특공</td></tr>
-                                <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:8px;">대담</td><td style="color:#d32f2f;">방어</td><td style="color:#1976d2;">공격</td></tr>
-                                <tr><td style="padding:8px;">장난꾸러기</td><td style="color:#d32f2f;">방어</td><td style="color:#1976d2;">특공</td></tr>
                             </table>
                         </div>
                     </div>
                 </div>
             `;
             attachEvents();
+            updateValues();
+        };
+
+        const updateValues = () => {
+            const evTotal = Object.values(evs).reduce((a, b) => a + b, 0);
+            const hpReal = calcStat('hp');
+            const atkReal = calcStat('atk');
+            const defReal = calcStat('def');
+            const spaReal = calcStat('spa');
+            const spdReal = calcStat('spd');
+            const speReal = calcStat('spe');
+            const physBulk = calculateBulk(hpReal, defReal);
+            const specBulk = calculateBulk(hpReal, spdReal);
+
+            let powerVal = 0;
+            if (selectedMove && selectedPoke) {
+                const stab = selectedPoke.types.includes(selectedMove.type) ? 1.5 : 1.0;
+                const statUsed = selectedMove.category === 'special' ? spaReal : atkReal;
+                powerVal = calculatePower(statUsed, selectedMove.power, stab);
+            }
+
+            // 대시보드 업데이트
+            container.querySelector('#power-val')!.textContent = powerVal.toLocaleString();
+            container.querySelector('#phys-bulk')!.textContent = physBulk.toLocaleString();
+            container.querySelector('#spec-bulk')!.textContent = specBulk.toLocaleString();
+            
+            const evDisplay = container.querySelector('#ev-total-display') as HTMLElement;
+            evDisplay.textContent = `노력치: ${evTotal}/510`;
+            evDisplay.style.background = evTotal > 510 ? '#ffebee' : '#e8f5e9';
+            evDisplay.style.color = evTotal > 510 ? '#d32f2f' : '#2e7d32';
+
+            // 각 카드 실수값 업데이트 및 입력 필드 동기화
+            STAT_KEYS.forEach(key => {
+                const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : (key === 'spe' ? speReal : 0)))));
+                const card = container.querySelector(`.stat-card[style*="${STAT_COLORS[key]}"]`);
+                if (card) {
+                    card.querySelector('span[style*="font-size:1.3rem"]')!.textContent = realVal.toString();
+                    (card.querySelector('.base-stat-input') as HTMLInputElement).value = baseStats[key].toString();
+                    (card.querySelector('.iv-input') as HTMLInputElement).value = ivs[key].toString();
+                    (card.querySelector('.ev-input') as HTMLInputElement).value = evs[key].toString();
+                    if (key !== 'hp') {
+                        (card.querySelector(`input[name="nature-plus"][value="${key}"]`) as HTMLInputElement).checked = naturePlus === key;
+                        (card.querySelector(`input[name="nature-minus"][value="${key}"]`) as HTMLInputElement).checked = natureMinus === key;
+                    }
+                }
+            });
+
+            // 포켓몬 스프라이트 업데이트
+            const spriteContainer = container.querySelector('#poke-sprite-container')!;
+            if (selectedPoke) {
+                spriteContainer.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:52px; height:52px; image-rendering:pixelated; background:#f5f5f5; border-radius:8px; border:1px solid #eee;" />
+                        <div style="display:flex; gap:2px;">
+                            ${selectedPoke.types.map(t => `<span style="padding: 1px 4px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.6rem;">${TYPE_NAMES_KO[t]}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                spriteContainer.innerHTML = '';
+            }
         };
 
         const attachEvents = () => {
@@ -200,7 +228,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                             renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
                         });
                     }
-                    renderUI(); 
+                    updateValues(); 
                 }
             });
 
@@ -212,64 +240,48 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 data: getSortedMoves(),
                 initialValue: selectedMove?.nameKo,
                 getSearchKey: m => m.searchKey, getDisplayName: m => m.nameKo, getDisplaySub: m => `(위력 ${m.power})`,
-                onSelect: m => { selectedMove = m; renderUI(); },
+                onSelect: m => { selectedMove = m; updateValues(); },
                 getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
                 renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
             });
 
-            container.querySelector('#level-input')?.addEventListener('change', (e) => {
-                level = parseInt((e.target as HTMLInputElement).value) || 50; renderUI();
+            container.querySelector('#level-input')?.addEventListener('input', (e) => {
+                level = parseInt((e.target as HTMLInputElement).value) || 0; updateValues();
             });
 
             container.querySelectorAll('.btn-preset').forEach(el => el.addEventListener('click', (e) => {
                 const preset = (e.currentTarget as HTMLElement).getAttribute('data-preset');
-                
-                if (preset === 'phys-atk') {
-                    evs.atk = 252;
-                    naturePlus = 'atk'; natureMinus = 'spa';
-                } else if (preset === 'spec-atk') {
-                    evs.spa = 252;
-                    naturePlus = 'spa'; natureMinus = 'atk';
-                } else if (preset === 'phys-def') {
-                    evs.def = 252;
-                    naturePlus = 'def'; natureMinus = 'spa';
-                } else if (preset === 'spec-def') {
-                    evs.spd = 252;
-                    naturePlus = 'spd'; natureMinus = 'atk';
-                }
-                renderUI();
+                if (preset === 'phys-atk') { evs.atk = 252; naturePlus = 'atk'; natureMinus = 'spa'; }
+                else if (preset === 'spec-atk') { evs.spa = 252; naturePlus = 'spa'; natureMinus = 'atk'; }
+                else if (preset === 'phys-def') { evs.def = 252; naturePlus = 'def'; natureMinus = 'spa'; }
+                else if (preset === 'spec-def') { evs.spd = 252; naturePlus = 'spd'; natureMinus = 'atk'; }
+                updateValues();
             }));
 
             container.querySelector('#btn-reset')?.addEventListener('click', () => {
                 evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 ivs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
-                naturePlus = 'none';
-                natureMinus = 'none';
-                renderUI();
+                naturePlus = 'none'; natureMinus = 'none';
+                updateValues();
             });
 
-            container.querySelectorAll('.base-stat-input').forEach(el => el.addEventListener('change', (e) => {
-                const s = (e.target as HTMLElement).getAttribute('data-stat') as StatKey;
-                baseStats[s] = parseInt((e.target as HTMLInputElement).value) || 0; renderUI();
-            }));
+            container.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                const stat = target.getAttribute('data-stat') as StatKey;
+                if (!stat) return;
 
-            container.querySelectorAll('.iv-input').forEach(el => el.addEventListener('change', (e) => {
-                const s = (e.target as HTMLElement).getAttribute('data-stat') as StatKey;
-                ivs[s] = parseInt((e.target as HTMLInputElement).value) || 0; renderUI();
-            }));
+                if (target.classList.contains('base-stat-input')) baseStats[stat] = parseInt(target.value) || 0;
+                else if (target.classList.contains('iv-input')) ivs[stat] = parseInt(target.value) || 0;
+                else if (target.classList.contains('ev-input')) evs[stat] = parseInt(target.value) || 0;
+                
+                updateValues();
+            });
 
-            container.querySelectorAll('.ev-input').forEach(el => el.addEventListener('change', (e) => {
-                const s = (e.target as HTMLElement).getAttribute('data-stat') as StatKey;
-                evs[s] = parseInt((e.target as HTMLInputElement).value) || 0; renderUI();
-            }));
-
-            container.querySelectorAll('input[name="nature-plus"]').forEach(el => el.addEventListener('change', (e) => {
-                naturePlus = (e.target as HTMLInputElement).value as StatKey; renderUI();
-            }));
-
-            container.querySelectorAll('input[name="nature-minus"]').forEach(el => el.addEventListener('change', (e) => {
-                natureMinus = (e.target as HTMLInputElement).value as StatKey; renderUI();
-            }));
+            container.addEventListener('change', (e) => {
+                const target = e.target as HTMLInputElement;
+                if (target.name === 'nature-plus') { naturePlus = target.value as StatKey; updateValues(); }
+                else if (target.name === 'nature-minus') { natureMinus = target.value as StatKey; updateValues(); }
+            });
 
             container.querySelector('#btn-nature-table')?.addEventListener('click', () => container.querySelector<HTMLElement>('#nature-modal')!.style.display = 'flex');
             container.querySelector('#modal-close')?.addEventListener('click', () => container.querySelector<HTMLElement>('#nature-modal')!.style.display = 'none');
@@ -287,7 +299,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             }
         });
 
-        renderUI();
+        renderStructure();
         
         return () => {
             unsubscribe();

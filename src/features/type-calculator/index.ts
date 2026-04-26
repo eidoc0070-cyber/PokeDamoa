@@ -6,7 +6,7 @@ import { globalStore } from '../../state/store.js';
 export function renderTypeCalculator(container: HTMLElement) {
     let selectedTypes: (PokemonType | 'none')[] = ['none', 'none', 'none', 'none'];
 
-    const renderSelects = () => {
+    const renderSelectsHTML = () => {
         const currentGen = globalStore.getState().generation;
         const availableTypes = getTypesForGenList(currentGen);
 
@@ -21,7 +21,7 @@ export function renderTypeCalculator(container: HTMLElement) {
         `).join('');
     };
 
-    const updateBaseUI = () => {
+    const initUI = () => {
         const currentGen = globalStore.getState().generation;
         const genText = currentGen === 'champions' ? 'Champions' : `${currentGen}세대`;
 
@@ -29,14 +29,14 @@ export function renderTypeCalculator(container: HTMLElement) {
             <div class="type-calc-container">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <h2 style="margin:0;">타입 계산기</h2>
-                    <span style="background:#e3f2fd; color:#1976d2; padding:4px 10px; border-radius:20px; font-size:0.85rem; font-weight:bold; border:1px solid #bbdefb;">
+                    <span id="gen-badge" style="background:#e3f2fd; color:#1976d2; padding:4px 10px; border-radius:20px; font-size:0.85rem; font-weight:bold; border:1px solid #bbdefb;">
                         기준: ${genText}
                     </span>
                 </div>
                 <p style="margin-top:0; color:#666; font-size:0.95rem;">포켓몬의 타입을 선택하면 방어 상성(받는 데미지)과 공격 상성(STAB 찌를 시 최대 데미지)을 보여줍니다. (최대 4개)</p>
 
                 <div id="type-selects" style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
-                    ${renderSelects()}
+                    ${renderSelectsHTML()}
                 </div>
 
                 <div id="matchup-results">
@@ -49,6 +49,20 @@ export function renderTypeCalculator(container: HTMLElement) {
         renderResults();
     };
 
+    const updateUIState = () => {
+        const currentGen = globalStore.getState().generation;
+        const genText = currentGen === 'champions' ? 'Champions' : `${currentGen}세대`;
+        const badge = container.querySelector('#gen-badge')!;
+        if (badge) badge.textContent = `기준: ${genText}`;
+
+        const selectsContainer = container.querySelector('#type-selects')!;
+        if (selectsContainer) {
+            selectsContainer.innerHTML = renderSelectsHTML();
+            attachListeners();
+        }
+        renderResults();
+    };
+
     const renderResults = () => {
         const resultsContainer = container.querySelector<HTMLDivElement>('#matchup-results')!;
         if (!resultsContainer) return;
@@ -57,7 +71,6 @@ export function renderTypeCalculator(container: HTMLElement) {
         const typeMatchups = getTypeMatchupsForGen(currentGen);
         const availableTypes = getTypesForGenList(currentGen);
 
-        // 중복 제거하여 실제 계산에 사용할 타입 목록 추출
         const allSelected = selectedTypes.filter((t): t is PokemonType => t !== 'none' && availableTypes.includes(t));
         const currentTypes = Array.from(new Set(allSelected));
 
@@ -66,7 +79,6 @@ export function renderTypeCalculator(container: HTMLElement) {
             return;
         }
 
-        // 중앙화된 헬퍼 사용
         const defMatchups = getDefenseMatchups(currentTypes, typeMatchups, availableTypes);
         const offMatchups = getOffensiveCoverage(currentTypes, typeMatchups, availableTypes);
 
@@ -114,19 +126,18 @@ export function renderTypeCalculator(container: HTMLElement) {
         selectedTypes.forEach((_, index) => {
             const select = container.querySelector<HTMLSelectElement>(`#select-type${index + 1}`)!;
             if (select) {
-                select.addEventListener('change', (e) => {
+                select.onchange = (e) => {
                     selectedTypes[index] = (e.target as HTMLSelectElement).value as PokemonType | 'none';
                     renderResults();
-                });
+                };
             }
         });
     };
 
-    updateBaseUI();
+    initUI();
 
-    // 스토어 구독
     const unsubscribe = globalStore.subscribe(() => {
-        updateBaseUI();
+        updateUIState();
     });
 
     return () => {
