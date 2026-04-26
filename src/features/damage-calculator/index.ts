@@ -74,9 +74,12 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             return { rolls, pcts };
         };
 
-        const renderStructure = () => {
+        const renderUI = () => {
+            const { rolls, pcts } = calculateDamageRange();
+            const minDmg = rolls[0], maxDmg = rolls[rolls.length - 1];
+            const minPct = pcts[0], maxPct = pcts[pcts.length - 1];
             const currentGen = globalStore.getState().generation;
-            
+
             const atkContent = `
                 <div id="atk-poke-search-container"></div>
                 <div id="move-search-container" style="margin-top:15px;"></div>
@@ -86,7 +89,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                     </label>
                     <div style="display:flex; flex-direction:column; text-align:right;">
                         <span style="font-size:0.85rem; color:var(--text-muted);">실능치(극보정)</span>
-                        <span style="font-size:0.95rem;">공: <strong id="atk-stat-display">${atkStatVal}</strong> | 특공: <strong id="spa-stat-display">${spaStatVal}</strong></span>
+                        <span style="font-size:0.95rem;">공: <strong>${atkStatVal}</strong> | 특공: <strong>${spaStatVal}</strong></span>
                     </div>
                 </div>
             `;
@@ -96,11 +99,11 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 <div style="margin-top:15px; background:rgba(0,0,0,0.02); padding:15px; border-radius:8px; border:1px solid #f0f0f0;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span style="font-weight:bold; color:var(--text-color);">HP 실능 (극보정)</span>
-                        <strong id="hp-stat-display" style="color:#d32f2f; font-size:1.1rem;">${hpVal}</strong>
+                        <strong style="color:#d32f2f; font-size:1.1rem;">${hpVal}</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:0.9rem; color:var(--text-muted);">
-                        <span>방어: <strong id="def-stat-display">${defVal}</strong></span>
-                        <span>특수방어: <strong id="spd-stat-display">${spdVal}</strong></span>
+                        <span>방어: <strong>${defVal}</strong></span>
+                        <span>특수방어: <strong>${spdVal}</strong></span>
                     </div>
                 </div>
             `;
@@ -109,65 +112,34 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 <div style="display:flex; flex-direction:column; gap:12px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <h2 style="margin:0; font-size:1.3rem;">데미지 계산기</h2>
-                        <span id="gen-badge" style="background:var(--primary-color); color:#fff; padding:4px 12px; border-radius:20px; font-weight:bold; font-size:0.8rem;">
+                        <span style="background:var(--primary-color); color:#fff; padding:4px 12px; border-radius:20px; font-weight:bold; font-size:0.8rem;">
                             ${currentGen === 'champions' ? 'Champions' : currentGen + '세대'}
                         </span>
                     </div>
                     
+                    <!-- 아코디언 컴포넌트를 사용한 공격자/방어자 패널 -->
                     ${renderAccordion({ id: 'atk', title: '공격자 (Attacker)', icon: '⚔️', contentHtml: atkContent, isOpen: isAtkPanelOpen, borderColor: '#e53935' })}
                     ${renderAccordion({ id: 'def', title: '방어자 (Defender)', icon: '🛡️', contentHtml: defContent, isOpen: isDefPanelOpen, borderColor: '#4caf50' })}
 
+                    <!-- 결과 패널 -->
                     <div class="card" style="text-align:center; border:2px solid #333; margin-top:10px;">
                         <h3 style="margin:0; color:var(--text-color);">계산 결과</h3>
-                        <div id="damage-percent-range" style="font-size:2.8rem; font-weight:900; margin:15px 0; text-shadow: 1px 1px 0px rgba(0,0,0,0.1);">
-                            0.0% <span style="font-size:1.5rem; color:#888;">~</span> 0.0%
+                        <div style="font-size:2.8rem; font-weight:900; margin:15px 0; color: ${maxPct >= 100 ? '#d32f2f' : '#1976d2'}; text-shadow: 1px 1px 0px rgba(0,0,0,0.1);">
+                            ${minPct.toFixed(1)}% <span style="font-size:1.5rem; color:#888;">~</span> ${maxPct.toFixed(1)}%
                         </div>
                         
                         <div style="background:rgba(0,0,0,0.03); padding:12px; border-radius:8px; margin-bottom:15px;">
                             <span style="color:var(--text-muted); font-size:0.9rem; display:block; margin-bottom:4px;">실제 데미지량 / 상대방 총 HP</span>
-                            <strong id="damage-raw-range" style="font-size:1.2rem;">0 ~ 0 <span style="color:#888; font-weight:normal;">/</span> ${hpVal}</strong>
+                            <strong style="font-size:1.2rem;">${minDmg} ~ ${maxDmg} <span style="color:#888; font-weight:normal;">/</span> ${hpVal}</strong>
                         </div>
                         
-                        <div id="selected-move-info" style="font-size:0.9rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:8px; background:#f5f5f5; padding:6px 12px; border-radius:20px; border:1px solid #ddd;">
-                            기술을 선택해주세요.
+                        <div style="font-size:0.9rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:8px; background:#f5f5f5; padding:6px 12px; border-radius:20px; border:1px solid #ddd;">
+                            ${selectedMove ? `<strong>${selectedMove.nameKo}</strong> (위력 ${movePower}) <span style="display:inline-block; width:12px; height:12px; background:${TYPE_COLORS[selectedMove.type as PokemonType]}; border-radius:50%;"></span> ${TYPE_NAMES_KO[selectedMove.type as PokemonType]}` : '기술을 선택해주세요.'}
                         </div>
                     </div>
                 </div>
             `;
             attachEvents();
-            updateValues();
-        };
-
-        const updateValues = () => {
-            updateAtkStats();
-            updateDefStats();
-            const { rolls, pcts } = calculateDamageRange();
-            const minDmg = rolls[0], maxDmg = rolls[rolls.length - 1];
-            const minPct = pcts[0], maxPct = pcts[pcts.length - 1];
-
-            // 수치 업데이트
-            container.querySelector('#atk-stat-display')!.textContent = atkStatVal.toString();
-            container.querySelector('#spa-stat-display')!.textContent = spaStatVal.toString();
-            container.querySelector('#hp-stat-display')!.textContent = hpVal.toString();
-            container.querySelector('#def-stat-display')!.textContent = defVal.toString();
-            container.querySelector('#spd-stat-display')!.textContent = spdVal.toString();
-
-            const pctRangeEl = container.querySelector('#damage-percent-range') as HTMLElement;
-            pctRangeEl.innerHTML = `${minPct.toFixed(1)}% <span style="font-size:1.5rem; color:#888;">~</span> ${maxPct.toFixed(1)}%`;
-            pctRangeEl.style.color = maxPct >= 100 ? '#d32f2f' : '#1976d2';
-
-            container.querySelector('#damage-raw-range')!.innerHTML = `${minDmg} ~ ${maxDmg} <span style="color:#888; font-weight:normal;">/</span> ${hpVal}`;
-
-            const moveInfoEl = container.querySelector('#selected-move-info')!;
-            if (selectedMove) {
-                moveInfoEl.innerHTML = `<strong>${selectedMove.nameKo}</strong> (위력 ${movePower}) <span style="display:inline-block; width:12px; height:12px; background:${TYPE_COLORS[selectedMove.type as PokemonType]}; border-radius:50%;"></span> ${TYPE_NAMES_KO[selectedMove.type as PokemonType]}`;
-            } else {
-                moveInfoEl.textContent = '기술을 선택해주세요.';
-            }
-
-            const currentGen = globalStore.getState().generation;
-            const badge = container.querySelector('#gen-badge')!;
-            badge.textContent = currentGen === 'champions' ? 'Champions' : currentGen + '세대';
         };
 
         let moveAutocomplete: any = null;
@@ -176,6 +148,16 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             const currentGen = globalStore.getState().generation;
             const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
 
+            // 아코디언 상태 동기화 이벤트
+            container.querySelector('.accordion-header')?.parentElement?.addEventListener('click', (e) => {
+                const header = (e.target as HTMLElement).closest('.accordion-header');
+                if (header) {
+                    const id = header.parentElement?.querySelector('.accordion-content')?.id;
+                    if (id === 'atk-content') isAtkPanelOpen = !isAtkPanelOpen;
+                    if (id === 'def-content') isDefPanelOpen = !isDefPanelOpen;
+                }
+            });
+
             createAutocomplete({
                 container: container.querySelector('#atk-poke-search-container')!,
                 label: '공격자 포켓몬', placeholder: '이름 입력', data: fullPokes.filter(p => p.genId <= targetGen),
@@ -183,14 +165,17 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
                 onSelect: p => { 
                     atkPoke = p; 
+                    updateAtkStats(); 
                     if (moveAutocomplete) {
+                        const currentGen = globalStore.getState().generation;
+                        const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
                         moveAutocomplete.setData(getSortedMoves(p));
                         moveAutocomplete.setOptions({
                             getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
                             renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
                         });
                     }
-                    updateValues(); 
+                    renderUI(); 
                 }
             });
 
@@ -200,7 +185,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 initialValue: defPoke?.nameKo,
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
                 onSelect: p => { 
-                    defPoke = p; updateValues(); 
+                    defPoke = p; updateDefStats(); renderUI(); 
                 }
             });
 
@@ -230,17 +215,19 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                             }
                         }
                     }
-                    updateValues(); 
+                    renderUI(); 
                 }
             });
 
-            container.querySelector('#level-input')?.addEventListener('input', (e) => {
-                level = parseInt((e.target as HTMLInputElement).value) || 0;
-                updateValues();
+            container.querySelector('#level-input')?.addEventListener('change', (e) => {
+                level = parseInt((e.target as HTMLInputElement).value) || 50;
+                updateAtkStats(); updateDefStats(); renderUI();
             });
         };
 
         const unsubscribe = globalStore.subscribe(() => {
+            updateAtkStats();
+            updateDefStats();
             if (moveAutocomplete) {
                 const currentGen = globalStore.getState().generation;
                 const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
@@ -250,10 +237,10 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                     renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
                 });
             }
-            updateValues();
+            renderUI();
         });
 
-        renderStructure();
+        updateAtkStats(); updateDefStats(); renderUI();
         return unsubscribe;
 
     } catch(err) {

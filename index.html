@@ -21,22 +21,9 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222222" />
     <title>PokeDamoa (포케다모아)</title>
     <link rel="manifest" href="/manifest.json" />
-    <!-- Preload data files for faster initial render -->
-    <link rel="preload" href="/pokedex-data.json" as="fetch" crossorigin="anonymous" />
-    <link rel="preload" href="/moves-data.json" as="fetch" crossorigin="anonymous" />
-    <link rel="preload" href="/abilities-data.json" as="fetch" crossorigin="anonymous" />
-    <link rel="preload" href="/items-data.json" as="fetch" crossorigin="anonymous" />
   </head>
   <body>
-    <div id="app">
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; color: #666;">
-        <div style="border: 4px solid rgba(0,0,0,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #ffcb05; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
-        <style>
-          @keyframes spin { to { transform: rotate(360deg); } }
-        </style>
-        <span>앱을 불러오는 중입니다...</span>
-      </div>
-    </div>
+    <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

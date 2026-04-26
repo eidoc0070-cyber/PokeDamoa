@@ -47,20 +47,7 @@ export async function renderItemList(container: HTMLElement): Promise<() => void
             (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
         };
 
-        // 디바운스 유틸리티
-        const debounce = (fn: Function, delay: number) => {
-            let timeoutId: any;
-            return (...args: any[]) => {
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => fn(...args), delay);
-            };
-        };
-
-        const debouncedUpdate = debounce(updateList, 150);
-        searchInput.addEventListener('input', (e) => { 
-            searchTerm = (e.target as HTMLInputElement).value; 
-            debouncedUpdate(); 
-        });
+        searchInput.addEventListener('input', (e) => { searchTerm = (e.target as HTMLInputElement).value; updateList(); });
         btnLoadMore.addEventListener('click', () => {
             const next = filteredData.slice(pagedData.length, pagedData.length + ITEMS_PER_PAGE);
             pagedData.push(...next);

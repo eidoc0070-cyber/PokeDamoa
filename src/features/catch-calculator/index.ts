@@ -17,17 +17,20 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
         let ballBonus = 1.0;
         let captureRate = selectedPoke?.captureRate || 255;
 
-        const renderStructure = () => {
+        const renderUI = () => {
+            const chance = calculateCatchChance(captureRate, currentHpPercent, ballBonus, statusBonus);
+            const currentGen = globalStore.getState().generation;
+
             container.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:20px;">
-                    <h2 style="margin:0;">포획 계산기</h2>
+                    <h2 style="margin:0;">포획 계산기 (리팩토링 버전)</h2>
                     <div style="display:flex; flex-wrap:wrap; gap:20px;">
                         <div style="flex:1; min-width:300px;">
                             <div id="poke-autocomplete-container"></div>
                             <div style="margin-top:15px;">
-                                <label id="capture-rate-label" style="display:block; font-weight:bold; margin-bottom:5px;">기본 포획률: ${captureRate}</label>
+                                <label style="display:block; font-weight:bold; margin-bottom:5px;">기본 포획률: ${captureRate}</label>
                                 <input type="range" id="hp-range" min="1" max="100" value="${currentHpPercent}" style="width:100%;" />
-                                <p>남은 HP: <strong id="hp-display">${currentHpPercent}%</strong></p>
+                                <p>남은 HP: <strong>${currentHpPercent}%</strong></p>
                             </div>
                         </div>
                         <div style="flex:1; min-width:300px; background:#f9f9f9; padding:15px; border-radius:12px;">
@@ -48,30 +51,14 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
 
                     <div style="text-align:center; padding:30px; background:#fff; border:3px solid #ed1c24; border-radius:16px; margin-top:20px;">
                         <h3 style="margin:0;">예상 포획 확률</h3>
-                        <div id="catch-chance-result" style="font-size:3.5rem; font-weight:bold; color:#ed1c24; margin:10px 0;">
-                            0%
+                        <div style="font-size:3.5rem; font-weight:bold; color:#ed1c24; margin:10px 0;">
+                            ${chance >= 100 ? '100%' : chance.toFixed(2) + '%'}
                         </div>
-                        <p id="selected-poke-display">선택된 포켓몬: <strong>-</strong></p>
+                        ${selectedPoke ? `<p>선택된 포켓몬: <strong>${selectedPoke.nameKo}</strong></p>` : ''}
                     </div>
                 </div>
             `;
             attachEvents();
-            updateValues();
-        };
-
-        const updateValues = () => {
-            const chance = calculateCatchChance(captureRate, currentHpPercent, ballBonus, statusBonus);
-            
-            container.querySelector('#catch-chance-result')!.textContent = chance >= 100 ? '100%' : chance.toFixed(2) + '%';
-            container.querySelector('#hp-display')!.textContent = `${currentHpPercent}%`;
-            container.querySelector('#capture-rate-label')!.textContent = `기본 포획률: ${captureRate}`;
-            
-            const pokeDisplay = container.querySelector('#selected-poke-display')!;
-            if (selectedPoke) {
-                pokeDisplay.innerHTML = `선택된 포켓몬: <strong>${selectedPoke.nameKo}</strong>`;
-            } else {
-                pokeDisplay.innerHTML = '선택된 포켓몬: <strong>-</strong>';
-            }
         };
 
         const attachEvents = () => {
@@ -81,28 +68,28 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
                 initialValue: selectedPoke?.nameKo,
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
                 onSelect: p => { 
-                    selectedPoke = p; captureRate = p.captureRate; updateValues(); 
+                    selectedPoke = p; captureRate = p.captureRate; renderUI(); 
                 }
             });
 
             container.querySelector('#hp-range')?.addEventListener('input', (e) => {
                 currentHpPercent = parseInt((e.target as HTMLInputElement).value);
-                updateValues();
+                renderUI();
             });
 
             container.querySelector('#status-select')?.addEventListener('change', (e) => {
                 statusBonus = parseFloat((e.target as HTMLSelectElement).value);
-                updateValues();
+                renderUI();
             });
 
             container.querySelector('#ball-select')?.addEventListener('change', (e) => {
                 ballBonus = parseFloat((e.target as HTMLSelectElement).value);
-                updateValues();
+                renderUI();
             });
         };
 
-        renderStructure();
-        const unsubscribe = globalStore.subscribe(updateValues);
+        renderUI();
+        const unsubscribe = globalStore.subscribe(renderUI);
         return () => unsubscribe();
     } catch (err) {
         container.innerHTML = `<p style="color:red; text-align:center;">오류: ${err}</p>`;

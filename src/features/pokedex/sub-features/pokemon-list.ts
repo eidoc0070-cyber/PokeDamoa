@@ -274,21 +274,8 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
             }
         };
 
-        // 디바운스 유틸리티
-        const debounce = (fn: Function, delay: number) => {
-            let timeoutId: any;
-            return (...args: any[]) => {
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => fn(...args), delay);
-            };
-        };
-
         // 이벤트 리스너
-        const debouncedUpdate = debounce(updateList, 150);
-        searchInput.addEventListener('input', (e) => { 
-            searchTerm = (e.target as HTMLInputElement).value; 
-            debouncedUpdate(); 
-        });
+        searchInput.addEventListener('input', (e) => { searchTerm = (e.target as HTMLInputElement).value; updateList(); });
         formCheck.addEventListener('change', (e) => { showAllForms = (e.target as HTMLInputElement).checked; updateList(); });
         btnLoadMore.addEventListener('click', loadMore);
         

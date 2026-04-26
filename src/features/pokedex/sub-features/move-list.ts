@@ -141,20 +141,7 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
             emptyMsg.style.display = pagedData.length === 0 ? 'block' : 'none';
         };
 
-        // 디바운스 유틸리티
-        const debounce = (fn: Function, delay: number) => {
-            let timeoutId: any;
-            return (...args: any[]) => {
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => fn(...args), delay);
-            };
-        };
-
-        const debouncedUpdate = debounce(updateList, 150);
-        searchInput.addEventListener('input', (e) => { 
-            searchTerm = (e.target as HTMLInputElement).value; 
-            debouncedUpdate(); 
-        });
+        searchInput.addEventListener('input', (e) => { searchTerm = (e.target as HTMLInputElement).value; updateList(); });
         
         btnToggleFilter.addEventListener('click', () => {
             const isHidden = filterPanel.style.display === 'none';

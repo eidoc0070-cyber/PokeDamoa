@@ -2,6 +2,10 @@ import { globalStore } from './state/store.js';
 import type { AppState } from './state/store.js';
 import { loadSettings, saveSettings, getExternalLinks } from './state/storage.js';
 import { getTabFromPath, updatePath, getCurrentStateUrl } from './state/url-params.js';
+import { renderSettings } from './features/settings/index.js';
+import { renderPokedex } from './features/pokedex/index.js';
+import { renderCalculatorHub } from './features/calculator/index.js';
+import { renderExternalLinks } from './features/external-links/index.js';
 import { initPwaBanner } from './components/PwaBanner.js';
 
 // 탭 ID에 따른 아이콘 매핑
@@ -41,7 +45,7 @@ export function initApp(container: HTMLElement) {
   const appMain = container.querySelector<HTMLElement>('#app-main')!;
   let cleanupCurrentTab: (() => void) | null = null;
 
-  const navigateTo = async (tabName: string, subTab?: string) => {
+  const navigateTo = (tabName: string, subTab?: string) => {
     // URL 업데이트 및 전역 상태 업데이트
     updatePath(tabName, subTab);
     globalStore.setState({ activeTab: tabName });
@@ -50,43 +54,24 @@ export function initApp(container: HTMLElement) {
         cleanupCurrentTab();
         cleanupCurrentTab = null;
     }
-    
-    // 로딩 표시 (간단하게)
-    appMain.innerHTML = '<div style="display:flex; justify-content:center; padding:40px; color:#888;">로딩 중...</div>';
+    appMain.innerHTML = '';
 
-    try {
-        switch (tabName) {
-          case 'settings': {
-            const { renderSettings } = await import('./features/settings/index.js');
-            appMain.innerHTML = '';
-            cleanupCurrentTab = renderSettings(appMain);
-            break;
-          }
-          case 'pokedex': {
-            const { renderPokedex } = await import('./features/pokedex/index.js');
-            appMain.innerHTML = '';
-            cleanupCurrentTab = await renderPokedex(appMain, subTab);
-            break;
-          }
-          case 'calculator': {
-            const { renderCalculatorHub } = await import('./features/calculator/index.js');
-            appMain.innerHTML = '';
-            cleanupCurrentTab = await renderCalculatorHub(appMain, subTab);
-            break;
-          }
-          case 'external-links': {
-            const { renderExternalLinks } = await import('./features/external-links/index.js');
-            appMain.innerHTML = '';
-            cleanupCurrentTab = await renderExternalLinks(appMain);
-            break;
-          }
-          default:
-            appMain.innerHTML = '<div class="card"><p class="text-center">아직 연결되지 않은 탭입니다.</p></div>';
-            break;
-        }
-    } catch (err) {
-        console.error('탭 전환 오류:', err);
-        appMain.innerHTML = '<div class="card"><p class="text-center" style="color:red;">화면을 불러오는 데 실패했습니다.</p></div>';
+    switch (tabName) {
+      case 'settings':
+        cleanupCurrentTab = renderSettings(appMain);
+        break;
+      case 'pokedex':
+        renderPokedex(appMain, subTab).then(cleanup => { cleanupCurrentTab = cleanup; });
+        break;
+      case 'calculator':
+        renderCalculatorHub(appMain, subTab).then(cleanup => { cleanupCurrentTab = cleanup; });
+        break;
+      case 'external-links':
+        renderExternalLinks(appMain).then(cleanup => { cleanupCurrentTab = cleanup; });
+        break;
+      default:
+        appMain.innerHTML = '<div class="card"><p class="text-center">아직 연결되지 않은 탭입니다.</p></div>';
+        break;
     }
     
     // 네비게이션 이동 후 스크롤 최상단으로 이동
