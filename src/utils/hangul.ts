@@ -40,9 +40,9 @@ export function disassembleHangul(str: string, fullyDecompose: boolean = false):
             const jungIdx = Math.floor((code % 588) / 28);
             const jongIdx = code % 28;
 
-            let cho = CHO[choIdx];
-            let jung = JUNG[jungIdx];
-            let jong = JONG[jongIdx];
+            let cho = CHO[choIdx]!;
+            let jung = JUNG[jungIdx]!;
+            let jong = JONG[jongIdx]!;
 
             if (fullyDecompose) {
                 cho = COMPLEX_JAMO[cho] || cho;
@@ -56,12 +56,8 @@ export function disassembleHangul(str: string, fullyDecompose: boolean = false):
         else if (charCode >= 0x3131 && charCode <= 0x318E) {
             const decomposed = fullyDecompose ? (COMPLEX_JAMO[char] || char) : char;
             disassembled += decomposed;
-            if (CHO.includes(char)) {
-                initialConsonants += decomposed;
-            } else {
-                initialConsonants += decomposed; // 초성이 아닌 자모 단독 입력 시에도 분해 적용
-            }
-        }
+            initialConsonants += decomposed;
+        } 
         else {
             disassembled += char;
             initialConsonants += char;
@@ -80,20 +76,20 @@ export function getLevenshteinDistance(a: string, b: string, limit: number): num
     if (Math.abs(n - m) > limit) return limit + 1;
 
     let prev = Array.from({ length: m + 1 }, (_, i) => i);
-    let curr = new Array(m + 1);
+    let curr = new Array<number>(m + 1);
 
     for (let i = 1; i <= n; i++) {
         curr[0] = i;
-        let minInRow = curr[0];
+        let minInRow = curr[0]!;
         for (let j = 1; j <= m; j++) {
             const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
-            if (curr[j] < minInRow) minInRow = curr[j];
+            curr[j] = Math.min(curr[j - 1]! + 1, prev[j]! + 1, prev[j - 1]! + cost);
+            if (curr[j]! < minInRow) minInRow = curr[j]!;
         }
         if (minInRow > limit) return limit + 1;
         [prev, curr] = [curr, prev];
     }
-    return prev[m];
+    return prev[m]!;
 }
 
 /**
@@ -108,45 +104,57 @@ export function hangulIncludes(target: string, query: string, allowFuzzy: boolea
     
     // searchKey 형태(이름|영문|분해|초성)인지 확인
     let nameKo = target;
+    let nameEn = '';
     let disassembled = '';
     let chosung = '';
     
     if (target.includes('|')) {
         const parts = target.split('|');
-        nameKo = parts[0];
+        nameKo = parts[0]!;
+        nameEn = parts[1] || '';
         disassembled = parts[2] || '';
         chosung = parts[3] || '';
     }
 
     const targetLower = nameKo.toLowerCase();
-    if (targetLower.includes(term)) return true;
+    const termLower = term.toLowerCase();
 
-    // 일반 분해 비교
+    // 1. 단순 포함 (한글/영문)
+    if (targetLower.includes(termLower)) return true;
+    if (nameEn && nameEn.toLowerCase().includes(termLower)) return true;
+
+    // 2. 일반 분해 비교
     const queryInfo = disassembleHangul(term);
-    if (!disassembled) {
-        const targetInfo = disassembleHangul(targetLower);
-        disassembled = targetInfo.disassembled;
-        chosung = targetInfo.initialConsonants;
+    let targetDis = disassembled;
+    let targetCho = chosung;
+
+    if (!targetDis) {
+        const targetInfo = disassembleHangul(nameKo);
+        targetDis = targetInfo.disassembled;
+        targetCho = targetInfo.initialConsonants;
     }
 
-    if (disassembled.includes(queryInfo.disassembled)) return true;
-    if (chosung.includes(queryInfo.disassembled)) return true;
+    if (targetDis.includes(queryInfo.disassembled)) return true;
+    if (targetCho.includes(queryInfo.disassembled)) return true;
 
-    // 완전 분해(fullyDecompose) 비교 (ㄲ -> ㄱㄱ 등)
+    // 3. 완전 분해(fullyDecompose) 비교 (ㄲ -> ㄱㄱ 등)
     const queryFull = disassembleHangul(term, true).disassembled;
-    const targetFull = disassembleHangul(targetLower, true).disassembled;
-    if (targetFull.includes(queryFull)) return true;
+    const targetFull = disassembleHangul(nameKo, true).disassembled;
+    const targetFullCho = disassembleHangul(nameKo, true).initialConsonants;
 
-    // 오타 허용 (Fuzzy)
+    if (targetFull.includes(queryFull)) return true;
+    if (targetFullCho.includes(queryFull)) return true;
+
+    // 4. 오타 허용 (Fuzzy)
     if (allowFuzzy && term.length >= 2) {
         const queryDis = queryInfo.disassembled;
         const maxDist = Math.max(1, Math.min(2, Math.floor(queryDis.length / 3)));
         
         // 전체 또는 부분 오타 허용 확인
-        const dist = getLevenshteinDistance(disassembled, queryDis, maxDist);
+        const dist = getLevenshteinDistance(targetDis, queryDis, maxDist);
         if (dist <= maxDist) return true;
         
-        const subDist = getLevenshteinDistance(disassembled.substring(0, queryDis.length), queryDis, maxDist);
+        const subDist = getLevenshteinDistance(targetDis.substring(0, queryDis.length), queryDis, maxDist);
         if (subDist <= maxDist) return true;
     }
 

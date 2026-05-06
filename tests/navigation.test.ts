@@ -87,9 +87,9 @@ window.history.replaceState = vi.fn((data, title, url) => {
 });
 
 // Import App related AFTER global mocks
-import { initApp } from '../src/app';
-import { globalStore } from '../src/state/store';
-import * as pokeApi from '../src/data/pokeapi';
+import { initApp } from '../src/app.js';
+import { globalStore } from '../src/state/store.js';
+import * as pokeApi from '../src/data/pokeapi.js';
 
 
 // Helper to wait for conditions

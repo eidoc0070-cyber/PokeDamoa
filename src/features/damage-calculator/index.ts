@@ -76,8 +76,8 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
 
         const renderUI = () => {
             const { rolls, pcts } = calculateDamageRange();
-            const minDmg = rolls[0], maxDmg = rolls[rolls.length - 1];
-            const minPct = pcts[0], maxPct = pcts[pcts.length - 1];
+            const minDmg = rolls[0]!, maxDmg = rolls[rolls.length - 1]!;
+            const minPct = pcts[0]!, maxPct = pcts[pcts.length - 1]!;
             const currentGen = globalStore.getState().generation;
 
             const atkContent = `
@@ -170,11 +170,10 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                         const currentGen = globalStore.getState().generation;
                         const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
                         moveAutocomplete.setData(getSortedMoves(p));
-                        moveAutocomplete.setOptions({
-                            getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
-                            renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
-                        });
-                    }
+                        moveAutocomplete.setOptions({ 
+                            getItemStyle: (m: MoveData) => getMoveItemStyle(m, atkPoke, targetGen),
+                            renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
+                        });                    }
                     renderUI(); 
                 }
             });
@@ -210,8 +209,9 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                         typeMulti = 1.0;
                         for (const dt of dTypes) {
                             const genMatchups = TYPE_MATCHUPS;
-                            if (genMatchups[m.type as PokemonType] && genMatchups[m.type as PokemonType][dt] !== undefined) {
-                                typeMulti *= genMatchups[m.type as PokemonType][dt];
+                            const typeMatchup = genMatchups[m.type as PokemonType];
+                            if (typeMatchup && typeMatchup[dt as PokemonType] !== undefined) {
+                                typeMulti *= typeMatchup[dt as PokemonType]!;
                             }
                         }
                     }
@@ -232,11 +232,10 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 const currentGen = globalStore.getState().generation;
                 const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
                 moveAutocomplete.setData(getSortedMoves(atkPoke));
-                moveAutocomplete.setOptions({
-                    getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
-                    renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
-                });
-            }
+                moveAutocomplete.setOptions({ 
+                    getItemStyle: (m: MoveData) => getMoveItemStyle(m, atkPoke, targetGen),
+                    renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
+                });            }
             renderUI();
         });
 

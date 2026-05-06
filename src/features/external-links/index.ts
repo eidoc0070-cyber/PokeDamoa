@@ -154,9 +154,11 @@ export async function renderExternalLinks(container: HTMLElement): Promise<() =>
                     const targetIndex = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index') || '0');
                     if (draggedIndex !== null && draggedIndex !== targetIndex) {
                         const draggedLink = links[draggedIndex];
-                        links.splice(draggedIndex, 1);
-                        links.splice(targetIndex, 0, draggedLink);
-                        renderUI();
+                        if (draggedLink) {
+                            links.splice(draggedIndex, 1);
+                            links.splice(targetIndex, 0, draggedLink);
+                            renderUI();
+                        }
                     }
                 });
 

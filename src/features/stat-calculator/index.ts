@@ -28,7 +28,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
     try {
         const [fullData, movesData] = await Promise.all([fetchPokedexData(), fetchMovesData()]);
         
-        let selectedPoke: PokemonData | null = fullData.find(p => p.id === 445) || fullData[0];
+        let selectedPoke: PokemonData | null = fullData.find(p => p.id === 445) || fullData[0] || null;
         let selectedMove: MoveData | null = null;
         let baseStats: Record<StatKey, number> = selectedPoke ? { ...selectedPoke.stats as any } : { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
         let level = 50;
@@ -196,8 +196,8 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                     if (moveAutocomplete) {
                         moveAutocomplete.setData(getSortedMoves());
                         moveAutocomplete.setOptions({
-                            getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
-                            renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                            getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
+                            renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
                         });
                     }
                     renderUI(); 
@@ -213,8 +213,8 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 initialValue: selectedMove?.nameKo,
                 getSearchKey: m => m.searchKey, getDisplayName: m => m.nameKo, getDisplaySub: m => `(위력 ${m.power})`,
                 onSelect: m => { selectedMove = m; renderUI(); },
-                getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
-                renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
+                renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
             });
 
             container.querySelector('#level-input')?.addEventListener('change', (e) => {
@@ -281,8 +281,8 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 const targetGen = gen === 'champions' ? 9 : gen as number;
                 moveAutocomplete.setData(getSortedMoves());
                 moveAutocomplete.setOptions({
-                    getItemStyle: m => getMoveItemStyle(m, selectedPoke, targetGen),
-                    renderItemExtra: m => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                    getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
+                    renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
                 });
             }
         });

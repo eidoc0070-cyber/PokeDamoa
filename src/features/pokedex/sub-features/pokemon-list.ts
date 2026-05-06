@@ -1,6 +1,7 @@
 import { fetchPokedexData, fetchAbilitiesData, fetchMovesData } from '../../../data/pokeapi.js';
 import type { PokemonData, AbilityData, MoveData } from '../../../data/pokeapi.js';
 import { TYPE_COLORS, TYPE_NAMES_KO, POKEMON_TYPES } from '../../../data/constants.js';
+import type { PokemonType } from '../../../data/constants.js';
 import { hangulIncludes } from '../../../utils/hangul.js';
 import { globalStore } from '../../../state/store.js';
 import { getStatsForGen, getTypesForGen, getAbilitiesForGen } from '../../../utils/pokemon-math.js';
@@ -164,7 +165,7 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
                     <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                         <span style="font-weight: bold; font-size: 0.9rem; white-space: nowrap;">${p.nameKo}</span>
                         <div style="display: flex; gap: 2px;">
-                            ${types.map(t => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}; color:#fff; font-size: 0.65rem; padding: 1px 4px; border-radius:3px;">${TYPE_NAMES_KO[t] || t}</span>`).join('')}
+                            ${types.map((t: PokemonType) => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}; color:#fff; font-size: 0.65rem; padding: 1px 4px; border-radius:3px;">${TYPE_NAMES_KO[t] || t}</span>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -181,7 +182,7 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
             const stats = getStatsForGen(p, genId);
             const types = getTypesForGen(p, genId);
             const abilities = getAbilitiesForGen(p, genId);
-            const totalStat = Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number;
+            const totalStat = Object.values(stats).reduce((a, b) => (a as number) + (b as number), 0) as number;
 
             modalContent.innerHTML = `
                 <div style="text-align:center;">
@@ -189,11 +190,11 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
                     <h2 style="margin: 0;">${p.nameKo} <span style="font-size:0.6em; color:#888;">#${String(p.speciesId).padStart(3,'0')}</span></h2>
                     <p style="color:#666; font-size: 0.9em; margin-top: 5px;">${p.nameEn.toUpperCase()}</p>
                     <div style="margin: 10px 0;">
-                        ${types.map(t => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}; color:#fff; font-size:0.85em; padding: 3px 8px; border-radius:4px; margin:0 2px;">${TYPE_NAMES_KO[t] || t}</span>`).join('')}
+                        ${types.map((t: PokemonType) => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}; color:#fff; font-size:0.85em; padding: 3px 8px; border-radius:4px; margin:0 2px;">${TYPE_NAMES_KO[t] || t}</span>`).join('')}
                     </div>
                     
                     <div style="text-align:left; margin-top:15px; font-size:0.9rem;">
-                        <strong>특성:</strong> ${abilities.length > 0 ? abilities.map(a => {
+                        <strong>특성:</strong> ${abilities.length > 0 ? abilities.map((a: any) => {
                             const abData = abilitiesData.find(ad => ad.id === a.id);
                             return `<span title="${abData?.effect || ''}" style="${a.isHidden ? 'color:#888; font-style:italic;' : ''}">${abData?.nameKo || '알 수 없음'}${a.isHidden ? '(숨겨짐)' : ''}</span>`;
                         }).join(', ') : '없음'}
@@ -238,7 +239,7 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
                 // 특성 필터
                 if (filterAbility !== 'all') {
                     const pAbilities = getAbilitiesForGen(p, targetGen);
-                    if (!pAbilities.some(a => a.id === filterAbility)) return false;
+                    if (!pAbilities.some((a: any) => a.id === filterAbility)) return false;
                 }
 
                 // 기술 필터

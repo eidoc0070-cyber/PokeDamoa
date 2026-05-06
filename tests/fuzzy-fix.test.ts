@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'bun:test';
-import { hangulIncludes, searchFuzzy } from '../src/utils/hangul';
+import { hangulIncludes, searchFuzzy } from '../src/utils/hangul.js';
 
 describe('Global Search Fix Verification', () => {
     const pikachuSearchKey = '피카츄|pikachu|ㅍㅣㅋㅏㅊㅠ|ㅍㅋㅊ';
@@ -33,15 +33,15 @@ describe('Global Search Fix Verification', () => {
 
         it('should prioritize exact match over fuzzy match', () => {
             const results = searchFuzzy(mockData, '피카츄', getFields);
-            expect(results[0].item.nameKo).toBe('피카츄');
-            expect(results[0].score).toBe(100);
-        });
+            expect(results[0]!.item.nameKo).toBe('피카츄');
+            expect(results[0]!.score).toBe(100);
+            });
 
-        it('should find pikachu with score 34 for "피가츄"', () => {
-            const results = searchFuzzy(mockData, '피가츄', getFields);
+            it('Should handle simple typos (Fuzzy Search)', () => {
+            const results = searchFuzzy(mockData, '피카추', getFields);
             expect(results.length).toBeGreaterThan(0);
-            expect(results[0].item.nameKo).toBe('피카츄');
-            expect(results[0].score).toBe(34);
-        });
+            expect(results[0]!.item.nameKo).toBe('피카츄');
+            expect(results[0]!.score).toBe(34);
+            });
     });
 });

@@ -1,7 +1,7 @@
 
 import { describe, it, expect, mock } from 'bun:test'; // vitest -> bun:test
 const vi = { fn: mock };
-import { Store } from '../src/state/store';
+import { Store } from '../src/state/store.js';
 
 describe('Store', () => {
   it('should initialize with initial state', () => {

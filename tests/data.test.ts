@@ -1,13 +1,14 @@
 import { expect, test, describe } from "bun:test"; // vitest -> bun:test
 import * as fs from "fs";
 import * as path from "path";
-import { FIELD_EFFECTS } from "../src/data/field-data";
+import { FIELD_EFFECTS } from "../src/data/field-data.js";
+import type { FieldEffect } from "../src/data/field-data.js";
 
 describe("도감 데이터 및 환경 설정 테스트", () => {
     
     test("필드 데이터(FIELD_EFFECTS)가 올바르게 정의되어 있는가", () => {
         expect(FIELD_EFFECTS.length).toBeGreaterThan(0);
-        const sun = FIELD_EFFECTS.find(e => e.id === 'sun');
+        const sun = FIELD_EFFECTS.find((e: FieldEffect) => e.id === 'sun');
         expect(sun).toBeDefined();
         expect(sun?.nameKo).toBe('쾌청');
         expect(sun?.category).toBe('weather');

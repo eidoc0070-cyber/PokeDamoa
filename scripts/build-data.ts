@@ -22,11 +22,11 @@ function parseCSV(csvDir: string, filename: string) {
   const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return [];
 
-  const headers = lines[0].split(',');
+  const headers = lines[0]!.split(',');
   const results: any[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const row = lines[i];
+    const row = lines[i]!;
     const cols: string[] = [];
     let current = '';
     let inQuotes = false;
@@ -205,7 +205,7 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         if (!genId) return;
         if (!pokemonLearnsetMap.has(pid)) pokemonLearnsetMap.set(pid, {});
         if (!pokemonLearnsetMap.get(pid)![genId]) pokemonLearnsetMap.get(pid)![genId] = [];
-        const list = pokemonLearnsetMap.get(pid)![genId];
+        const list = pokemonLearnsetMap.get(pid)![genId]!;
         if (!list.includes(mid)) list.push(mid);
     });
 

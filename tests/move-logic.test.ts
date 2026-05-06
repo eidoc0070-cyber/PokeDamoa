@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { getLearnableMoveIds, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from "../src/utils/pokemon-math";
+import { getLearnableMoveIds, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from "../src/utils/pokemon-math.js";
 
 describe("Move Logic Utilities", () => {
     const mockPoke = {

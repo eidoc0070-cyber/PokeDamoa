@@ -10,9 +10,9 @@ interface AutocompleteOptions<T> {
     getDisplayName: (item: T) => string;
     getDisplaySub: (item: T) => string;
     onSelect: (item: T) => void;
-    initialValue?: string;
-    renderItemExtra?: (item: T) => string;
-    getItemStyle?: (item: T) => Partial<CSSStyleDeclaration>;
+    initialValue?: string | undefined;
+    renderItemExtra?: ((item: T) => string) | undefined;
+    getItemStyle?: ((item: T) => Partial<CSSStyleDeclaration>) | undefined;
 }
 
 export function createAutocomplete<T>(options: AutocompleteOptions<T>) {

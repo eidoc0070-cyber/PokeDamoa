@@ -178,16 +178,15 @@ export function getOffensiveCoverage(
     typeMatchups: Record<string, Record<string, number>>,
     allTypes: readonly string[]
 ): Record<number, string[]> {
-    const results: Record<number, string[]> = { 2: [], 1: [], 0.5: [], 0: [] };
+    const results: Record<number, string[]> = {};
     allTypes.forEach(defType => {
         let maxMultiplier = 0;
         attackerTypes.forEach(atkType => {
             const mult = calculateTypeMultiplier(atkType, [defType], typeMatchups);
             if (mult > maxMultiplier) maxMultiplier = mult;
         });
-        if (results[maxMultiplier]) {
-            results[maxMultiplier].push(defType);
-        }
+        if (!results[maxMultiplier]) results[maxMultiplier] = [];
+        results[maxMultiplier]!.push(defType);
     });
     return results;
 }

@@ -4,7 +4,7 @@
 
 export interface PathInfo {
     mainTab: string;
-    subTab?: string;
+    subTab?: string | undefined;
 }
 
 // 현재 탭 경로 가져오기 (예: /pokedex/pokemon -> { mainTab: 'pokedex', subTab: 'pokemon' })
@@ -62,6 +62,7 @@ export function getCurrentStateUrl(): string {
 
 // URL로부터 상태 복원 (탭 이동 + 쿼리 스트링)
 export function restoreStateFromUrl(urlStr: string) {
+    if (!urlStr || !urlStr.startsWith('http')) return null;
     try {
         const url = new URL(urlStr);
         const pathParts = url.pathname.replace(/^\/|\/$/g, '').split('/');
@@ -69,7 +70,6 @@ export function restoreStateFromUrl(urlStr: string) {
         const subTab = pathParts[1];
         return { mainTab, subTab, params: Object.fromEntries(url.searchParams.entries()) };
     } catch (e) {
-        console.error('URL 파싱 실패:', e);
         return null;
     }
 }

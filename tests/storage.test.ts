@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'bun:test'; // vitest -> bun:test
-import { saveSettings, loadSettings, savePreset, loadPresets, deletePreset, SETTINGS_KEY } from '../src/state/storage';
+import { saveSettings, loadSettings, savePreset, loadPresets, deletePreset, SETTINGS_KEY } from '../src/state/storage.js';
 
 describe('storage utility', () => {
   beforeEach(() => {

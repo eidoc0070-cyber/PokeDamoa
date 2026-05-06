@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "bun:test";
-import { createAutocomplete } from "../src/components/SearchAutocomplete";
+import { createAutocomplete } from "../src/components/SearchAutocomplete.js";
 
 describe("SearchAutocomplete", () => {
     let container: HTMLElement;
@@ -16,9 +16,9 @@ describe("SearchAutocomplete", () => {
             label: "Label",
             placeholder: "Placeholder",
             data,
-            getSearchKey: (d) => d.search,
-            getDisplayName: (d) => d.name,
-            getDisplaySub: (d) => "sub",
+            getSearchKey: (d: any) => d.search,
+            getDisplayName: (d: any) => d.name,
+            getDisplaySub: (d: any) => "sub",
             onSelect: () => {},
             getItemStyle: () => ({ color: "red" })
         });

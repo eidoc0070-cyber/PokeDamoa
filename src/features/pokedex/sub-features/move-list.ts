@@ -127,10 +127,10 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
                 if (filterCategory !== 'all' && m.category !== filterCategory) return false;
                 
                 const pwr = m.power || 0;
-                if (pwr < filterPower[0] || pwr > filterPower[1]) return false;
+                if (pwr < filterPower[0]! || pwr > filterPower[1]!) return false;
                 
                 const acc = m.accuracy || 100;
-                if (acc < filterAccuracy[0] || acc > filterAccuracy[1]) return false;
+                if (acc < filterAccuracy[0]! || acc > filterAccuracy[1]!) return false;
 
                 return true;
             });

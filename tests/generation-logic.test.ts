@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test'; // vitest -> bun:test
-import { getTypeMatchupsForGen, getTypesForGenList } from '../src/data/constants';
-import { getStatsForGen, getTypesForGen, getAbilitiesForGen } from '../src/utils/pokemon-math';
+import { getTypeMatchupsForGen, getTypesForGenList } from '../src/data/constants.js';
+import { getStatsForGen, getTypesForGen, getAbilitiesForGen } from '../src/utils/pokemon-math.js';
 
 describe('Generation Logic Tests', () => {
     describe('getTypeMatchupsForGen', () => {

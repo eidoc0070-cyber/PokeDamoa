@@ -306,13 +306,15 @@ export function renderSettings(container: HTMLElement) {
                 const targetIndex = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index') || '0');
                 if (draggedIndex !== null && draggedIndex !== targetIndex) {
                     const draggedTab = currentTabs[draggedIndex];
-                    currentTabs.splice(draggedIndex, 1);
-                    currentTabs.splice(targetIndex, 0, draggedTab);
-                    
-                    // 순서 변경도 커스터마이징으로 간주
-                    currentTabs.forEach(t => t.isCustomized = true);
-                    
-                    updateUI();
+                    if (draggedTab) {
+                        currentTabs.splice(draggedIndex, 1);
+                        currentTabs.splice(targetIndex, 0, draggedTab);
+                        
+                        // 순서 변경도 커스터마이징으로 간주
+                        currentTabs.forEach(t => t.isCustomized = true);
+                        
+                        updateUI();
+                    }
                 }
             });
 

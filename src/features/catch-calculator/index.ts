@@ -11,7 +11,7 @@ export async function renderCatchCalculator(container: HTMLElement): Promise<() 
     try {
         const fullData = await fetchPokedexData();
         
-        let selectedPoke: PokemonData | null = fullData.find(p => p.id === 25) || fullData[0];
+        let selectedPoke: PokemonData | null = fullData.find(p => p.id === 25) || fullData[0] || null;
         let currentHpPercent = 100;
         let statusBonus = 1.0;
         let ballBonus = 1.0;

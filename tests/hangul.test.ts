@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'bun:test'; // vitest -> bun:test
-import { disassembleHangul, hangulIncludes } from '../src/utils/hangul';
+import { disassembleHangul, hangulIncludes } from '../src/utils/hangul.js';
 
 describe('Hangul Utility', () => {
   describe('disassembleHangul', () => {
@@ -92,11 +92,9 @@ describe('Hangul Utility', () => {
         expect(hangulIncludes('래비풋', 'ㅍㅜㅅ')).toBe(true);
     });
 
-    it('should handle mixed initial consonants and full characters', () => {
-        // Current implementation might not support mixed like "ㅍㅣㅋㅊ" for "피카츄" 
-        // because it either compares disassembled OR initial consonants.
-        // Let's test current behavior.
-        expect(hangulIncludes('피카츄', 'ㅍㅣㅋㅊ')).toBe(false); // This is likely false currently
+    it('should handle mixed initial consonants and full characters (now supported via fuzzy)', () => {
+        // Now supported via fuzzy matching
+        expect(hangulIncludes('피카츄', 'ㅍㅣㅋㅊ')).toBe(true);
     });
 
     it('should match English name', () => {

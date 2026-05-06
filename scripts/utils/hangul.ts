@@ -40,9 +40,9 @@ export function disassembleHangul(text: string, fullyDecompose: boolean = false)
       const jungIdx = Math.floor((index % 588) / 28);
       const jongIdx = index % 28;
 
-      let cho = CHO[choIdx];
-      let jung = JUNG[jungIdx];
-      let jong = JONG[jongIdx];
+      let cho = CHO[choIdx]!;
+      let jung = JUNG[jungIdx]!;
+      let jong = JONG[jongIdx]!;
 
       if (fullyDecompose) {
           cho = COMPLEX_JAMO[cho] || cho;

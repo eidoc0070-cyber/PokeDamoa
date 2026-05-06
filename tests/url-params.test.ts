@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'bun:test'; // vitest -> bun:test
-import { getTabFromPath, restoreStateFromUrl } from '../src/state/url-params';
+import { getTabFromPath, restoreStateFromUrl } from '../src/state/url-params.js';
 
 // Helper for mocking location
 const mockLocation = (pathname: string) => {

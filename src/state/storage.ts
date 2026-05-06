@@ -10,7 +10,7 @@ export interface TabItem {
     id: string; // 고유 ID (URL 파라미터 등에서 참조)
     currentName: string; // 표시될 이름
     isVisible: boolean; // 노출 여부
-    isCustomized?: boolean; // 사용자가 수동으로 수정한 적이 있는지 여부
+    isCustomized?: boolean | undefined; // 사용자가 수동으로 수정한 적이 있는지 여부
 }
 
 export const DEFAULT_TABS: TabItem[] = [
@@ -24,10 +24,10 @@ export interface SavedSettings {
     isDarkMode: boolean;
     isCustomMode: boolean;
     generation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 'champions';
-    externalLinks?: any[]; // 외부 링크 데이터 포함 가능
-    tabs?: TabItem[]; // 상단 탭 설정
-    visitCount?: number;
-    pwaGuideDismissed?: boolean;
+    externalLinks?: any[] | undefined; // 외부 링크 데이터 포함 가능
+    tabs?: TabItem[] | undefined; // 상단 탭 설정
+    visitCount?: number | undefined;
+    pwaGuideDismissed?: boolean | undefined;
 }
 
 // 설정 저장
