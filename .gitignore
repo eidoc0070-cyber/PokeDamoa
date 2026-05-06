@@ -13,7 +13,8 @@ Thumbs.db
 .env
 .env.local
 
-참조파일및 설명서같은거 모아놓은곳/
+docs/
+data-source/
 
 # Bun 전용 환경 (npm lock 파일 제외)
 package-lock.json

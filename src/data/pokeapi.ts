@@ -1,4 +1,5 @@
 import type { PokemonType } from './constants.js';
+import { getFromDB, saveToDB } from '../utils/storage-db.js';
 
 export interface PokemonData {
     id: number;
@@ -61,16 +62,55 @@ let cachedMovesData: MoveData[] | null = null;
 let cachedAbilitiesData: AbilityData[] | null = null;
 let cachedItemsData: ItemData[] | null = null;
 
+async function checkVersion(): Promise<boolean> {
+    try {
+        const response = await fetch('/version.json');
+        if (!response.ok) return false;
+        const { version } = await response.json();
+        const localVersion = await getFromDB<number>('data_version');
+        
+        if (version === localVersion) {
+            return true;
+        } else {
+            await saveToDB('data_version', version);
+            return false;
+        }
+    } catch {
+        return false;
+    }
+}
+
+async function smartFetch<T>(key: string, url: string, isVersionMatch: boolean): Promise<T[]> {
+    if (isVersionMatch) {
+        const localData = await getFromDB<T[]>(key);
+        if (localData) return localData;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+    const data = await response.json();
+    await saveToDB(key, data);
+    return data;
+}
+
+let versionMatchPromise: Promise<boolean> | null = null;
+
+async function getIsVersionMatch() {
+    if (!versionMatchPromise) {
+        versionMatchPromise = checkVersion();
+    }
+    return versionMatchPromise;
+}
+
 /**
- * 사전 빌드된 /pokedex-data.json 정적 파일을 가져옵니다.
+ * 사전 빌드된 /pokedex-data.json 정적 파일을 가져옵니다. (IndexedDB 캐싱 활용)
  */
 export async function fetchPokedexData(): Promise<PokemonData[]> {
     if (cachedData) return cachedData;
     try {
-        const response = await fetch('/pokedex-data.json');
-        if (!response.ok) throw new Error('Failed to fetch pokedex data');
-        cachedData = await response.json();
-        return cachedData!;
+        const isMatch = await getIsVersionMatch();
+        cachedData = await smartFetch<PokemonData>('pokedex_data', '/pokedex-data.json', isMatch);
+        return cachedData;
     } catch (e) {
         console.error('도감 데이터 로드 실패:', e);
         return [];
@@ -83,10 +123,9 @@ export async function fetchPokedexData(): Promise<PokemonData[]> {
 export async function fetchMovesData(): Promise<MoveData[]> {
     if (cachedMovesData) return cachedMovesData;
     try {
-        const response = await fetch('/moves-data.json');
-        if (!response.ok) throw new Error('Failed to fetch moves data');
-        cachedMovesData = await response.json();
-        return cachedMovesData!;
+        const isMatch = await getIsVersionMatch();
+        cachedMovesData = await smartFetch<MoveData>('moves_data', '/moves-data.json', isMatch);
+        return cachedMovesData;
     } catch (e) {
         console.error('기술 데이터 로드 실패:', e);
         return [];
@@ -99,10 +138,9 @@ export async function fetchMovesData(): Promise<MoveData[]> {
 export async function fetchAbilitiesData(): Promise<AbilityData[]> {
     if (cachedAbilitiesData) return cachedAbilitiesData;
     try {
-        const response = await fetch('/abilities-data.json');
-        if (!response.ok) throw new Error('Failed to fetch abilities data');
-        cachedAbilitiesData = await response.json();
-        return cachedAbilitiesData!;
+        const isMatch = await getIsVersionMatch();
+        cachedAbilitiesData = await smartFetch<AbilityData>('abilities_data', '/abilities-data.json', isMatch);
+        return cachedAbilitiesData;
     } catch (e) {
         console.error('특성 데이터 로드 실패:', e);
         return [];
@@ -115,10 +153,9 @@ export async function fetchAbilitiesData(): Promise<AbilityData[]> {
 export async function fetchItemsData(): Promise<ItemData[]> {
     if (cachedItemsData) return cachedItemsData;
     try {
-        const response = await fetch('/items-data.json');
-        if (!response.ok) throw new Error('Failed to fetch items data');
-        cachedItemsData = await response.json();
-        return cachedItemsData!;
+        const isMatch = await getIsVersionMatch();
+        cachedItemsData = await smartFetch<ItemData>('items_data', '/items-data.json', isMatch);
+        return cachedItemsData;
     } catch (e) {
         console.error('아이템 데이터 로드 실패:', e);
         return [];

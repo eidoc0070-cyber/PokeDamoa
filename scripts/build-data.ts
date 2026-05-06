@@ -6,7 +6,7 @@ import { disassembleHangul } from './utils/hangul.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DEFAULT_CSV_DIR = path.resolve(__dirname, '../public/pokeapi/pokeapi-master/data/v2/csv');
+const DEFAULT_CSV_DIR = path.resolve(__dirname, '../data-source/pokeapi/pokeapi-master/data/v2/csv');
 const DEFAULT_OUTPUT_FILE = path.resolve(__dirname, '../public/pokedex-data.json');
 const DEFAULT_MOVES_OUTPUT_FILE = path.resolve(__dirname, '../public/moves-data.json');
 const DEFAULT_ABILITIES_OUTPUT_FILE = path.resolve(__dirname, '../public/abilities-data.json');
@@ -387,6 +387,10 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       });
     });
     fs.writeFileSync(DEFAULT_ITEMS_OUTPUT_FILE, JSON.stringify(finalItems, null, 0), 'utf-8');
+
+    // 버전 파일 생성 (타임스탬프 기반)
+    const versionFile = path.resolve(__dirname, '../public/version.json');
+    fs.writeFileSync(versionFile, JSON.stringify({ version: Date.now() }), 'utf-8');
 
     console.log('모든 데이터 빌드가 완료되었습니다.');
   } catch (err) {

@@ -359,6 +359,23 @@ input:checked + .toggle-slider:before {
 .gap-1 { gap: 8px; }
 .gap-2 { gap: 16px; }
 
+/* Skeleton Loading Animation */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, #2c2c2c 25%, #3a3a3a 50%, #2c2c2c 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Responsive adjustments for Desktop testing */
 @media screen and (min-width: 601px) {
   body {
