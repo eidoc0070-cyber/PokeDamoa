@@ -37,8 +37,8 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
 
             <div id="pokedex-grid" class="pokedex-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;"></div>
             
-            <div id="load-more-container" style="text-align: center; margin-top: 20px; display: none;">
-                <button id="btn-load-more" style="background: var(--primary-color, #1976d2); color: #fff; border:none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;">더 보기</button>
+            <div id="load-more-container" style="text-align: center; margin: 20px 0; display: none; padding: 20px; color: var(--text-muted);">
+                <span class="loading-text">목록을 더 불러오는 중...</span>
             </div>
 
             <p id="empty-msg" style="text-align:center; color:#888; display:none; padding: 40px;">검색 결과가 없습니다.</p>
@@ -53,7 +53,6 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
 
         const gridEl = container.querySelector('#pokedex-grid')!;
         const loadMoreContainer = container.querySelector('#load-more-container') as HTMLElement;
-        const btnLoadMore = container.querySelector('#btn-load-more') as HTMLButtonElement;
         const modal = container.querySelector('#poke-modal') as HTMLElement;
         const modalClose = container.querySelector('#modal-close') as HTMLElement;
         const modalContent = container.querySelector('#modal-content') as HTMLElement;
@@ -131,8 +130,15 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
         );
         filterState = filterPanel.getState();
 
+        // IntersectionObserver for Infinite Scroll
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && pagedData.length < filteredData.length) {
+                loadMore();
+            }
+        }, { threshold: 0.1 });
+        observer.observe(loadMoreContainer);
+
         // 이벤트 리스너
-        btnLoadMore.addEventListener('click', loadMore);
         gridEl.addEventListener('click', (e) => {
             const card = (e.target as HTMLElement).closest('.poke-card');
             if (card) openModal(parseInt(card.getAttribute('data-poke-id') || '0'));
@@ -141,12 +147,16 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
 
         // 전역 설정 변경 구독
-        const unsubscribe = globalStore.subscribe(() => {
+        const unsubscribeStore = globalStore.subscribe(() => {
             updateList();
         });
 
         updateList();
-        return unsubscribe;
+
+        return () => {
+            unsubscribeStore();
+            observer.disconnect();
+        };
 
     } catch(err) {
         container.innerHTML = `<p style="color:red; padding: 20px;">도감 로드 실패: ${err}</p>`;
