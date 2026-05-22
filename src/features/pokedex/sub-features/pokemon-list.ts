@@ -132,7 +132,7 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
 
         // IntersectionObserver for Infinite Scroll
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && pagedData.length < filteredData.length) {
+            if (entries[0]?.isIntersecting && pagedData.length < filteredData.length) {
                 loadMore();
             }
         }, { threshold: 0.1 });

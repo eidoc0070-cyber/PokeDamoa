@@ -161,3 +161,15 @@ export async function fetchItemsData(): Promise<ItemData[]> {
         return [];
     }
 }
+
+/**
+ * 캐시된 데이터를 외부(window.PokeApp 등)에서 조회할 수 있도록 반환합니다.
+ */
+export function getLoadedData() {
+    return {
+        pokemon: cachedData,
+        moves: cachedMovesData,
+        abilities: cachedAbilitiesData,
+        items: cachedItemsData
+    };
+}
