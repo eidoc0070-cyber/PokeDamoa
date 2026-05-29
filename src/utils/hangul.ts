@@ -107,6 +107,7 @@ export function hangulIncludes(target: string, query: string, allowFuzzy: boolea
     let nameEn = '';
     let disassembled = '';
     let chosung = '';
+    let dexNumber = '';
     
     if (target.includes('|')) {
         const parts = target.split('|');
@@ -114,14 +115,16 @@ export function hangulIncludes(target: string, query: string, allowFuzzy: boolea
         nameEn = parts[1] || '';
         disassembled = parts[2] || '';
         chosung = parts[3] || '';
+        dexNumber = parts[4] || '';
     }
 
     const targetLower = nameKo.toLowerCase();
     const termLower = term.toLowerCase();
 
-    // 1. 단순 포함 (한글/영문)
+    // 1. 단순 포함 (한글/영문/도감번호)
     if (targetLower.includes(termLower)) return true;
     if (nameEn && nameEn.toLowerCase().includes(termLower)) return true;
+    if (dexNumber && dexNumber.includes(termLower)) return true;
 
     // 2. 일반 분해 비교
     const queryInfo = disassembleHangul(term);

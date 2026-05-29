@@ -111,6 +111,12 @@ describe('Hangul Utility', () => {
       expect(hangulIncludes(pikachuSearchKey, '   ')).toBe(true);
     });
 
+    it('should match Pokedex number in searchKey', () => {
+      const pikachuSearchKeyWithDex = '피카츄|pikachu|ㅍㅣㅋㅏㅊㅠ|ㅍㅋㅊ|25';
+      expect(hangulIncludes(pikachuSearchKeyWithDex, '25')).toBe(true);
+      expect(hangulIncludes(pikachuSearchKeyWithDex, '2')).toBe(true);
+    });
+
     it('should be case insensitive', () => {
       expect(hangulIncludes(pikachuSearchKey, 'PIKA')).toBe(true);
     });

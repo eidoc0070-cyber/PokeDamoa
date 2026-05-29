@@ -4,6 +4,7 @@ import { getFromDB, saveToDB } from '../utils/storage-db.js';
 export interface PokemonData {
     id: number;
     speciesId: number;
+    dexNumber: number;
     nameKo: string;
     nameEn: string;
     searchKey: string;

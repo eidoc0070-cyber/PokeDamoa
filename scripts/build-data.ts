@@ -92,11 +92,19 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const versionsList = parseCSV(csvDir, 'versions.csv');
     const versionNamesList = parseCSV(csvDir, 'version_names.csv');
     const versionGroupsList = parseCSV(csvDir, 'version_groups.csv');
+    const dexNumbersList = parseCSV(csvDir, 'pokemon_dex_numbers.csv');
 
     console.log('기술 습득 정보(pokemon_moves.csv) 로딩 중...');
     const pokemonMovesRaw = parseCSV(csvDir, 'pokemon_moves.csv');
 
     console.log('데이터 매핑 중...');
+
+    const nationalDexMap = new Map<number, number>();
+    dexNumbersList.forEach(dn => {
+      if (dn.pokedex_id === '1') {
+        nationalDexMap.set(parseInt(dn.species_id), parseInt(dn.pokedex_number));
+      }
+    });
 
     const versionGroupToGenMap = new Map<number, number>();
     versionGroupsList.forEach(vg => {
@@ -286,11 +294,12 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
       const id = parseInt(p.id);
       const sId = parseInt(p.species_id);
       const sData = speciesDataMap.get(sId);
+      const dexNumber = nationalDexMap.get(sId) || 0;
       const nameKo = speciesNameMap.get(sId) || p.identifier;
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
       finalPokedex.push({
-        id, speciesId: sId, nameKo, nameEn: p.identifier,
-        searchKey: `${nameKo}|${p.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
+        id, speciesId: sId, dexNumber, nameKo, nameEn: p.identifier,
+        searchKey: `${nameKo}|${p.identifier.toLowerCase()}|${disassembled}|${initialConsonants}|${dexNumber}`,
         d: disassembled,
         c: initialConsonants,
         types: (pokemonToTypesMap.get(id) || []).filter(Boolean),

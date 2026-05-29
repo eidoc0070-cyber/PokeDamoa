@@ -19,7 +19,7 @@ export function renderPokemonModalContent(
     return `
         <div style="text-align:center;">
             <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" style="width: 120px; height: 120px; image-rendering:pixelated;" />
-            <h2 style="margin: 0;">${p.nameKo} <span style="font-size:0.6em; color:#888;">#${String(p.speciesId).padStart(3,'0')}</span></h2>
+            <h2 style="margin: 0;">${p.nameKo} <span style="font-size:0.6em; color:#888;">#${String(p.dexNumber).padStart(3,'0')}</span></h2>
             <p style="color:#666; font-size: 0.9em; margin-top: 5px;">${p.nameEn.toUpperCase()}</p>
             <div style="margin: 10px 0;">
                 ${types.map((t: PokemonType) => `<span class="type-badge" style="background-color: ${TYPE_COLORS[t]}; color:#fff; font-size:0.85em; padding: 3px 8px; border-radius:4px; margin:0 2px;">${TYPE_NAMES_KO[t] || t}</span>`).join('')}

@@ -18,6 +18,15 @@ describe('build-data script', () => {
     const pikachu = data.find((p: any) => p.id === 25);
     expect(pikachu).toBeDefined();
     expect(pikachu.nameKo).toBe('피카츄');
+    expect(pikachu.dexNumber).toBe(25);
+    expect(pikachu.searchKey).toContain('|25');
+
+    // Check a Mega form (e.g. Mega Charizard X, ID 10034, Species 6)
+    const megaCharizardX = data.find((p: any) => p.id === 10034);
+    if (megaCharizardX) {
+      expect(megaCharizardX.dexNumber).toBe(6);
+      expect(megaCharizardX.searchKey).toContain('|6');
+    }
     
     // Check encounters structure
     expect(Array.isArray(pikachu.encounters)).toBe(true);
