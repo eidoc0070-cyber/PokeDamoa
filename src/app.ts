@@ -1,16 +1,19 @@
 import { globalStore } from './state/store.js';
 import type { AppState } from './state/store.js';
-import { loadSettings, saveSettings, getExternalLinks } from './state/storage.js';
+import { loadSettings, saveSettings, getExternalLinks, DEFAULT_TABS } from './state/storage.js';
+import type { TabItem } from './state/storage.js';
 import { getTabFromPath, updatePath, getCurrentStateUrl } from './state/url-params.js';
 import { renderSettings } from './features/settings/index.js';
 import { renderPokedex } from './features/pokedex/index.js';
 import { renderCalculatorHub } from './features/calculator/index.js';
 import { renderExternalLinks } from './features/external-links/index.js';
+import { renderPartyBuilder } from './features/party-builder/index.js';
 import { initPwaBanner } from './components/PwaBanner.js';
 
 // 탭 ID에 따른 아이콘 매핑
 const TAB_ICONS: Record<string, string> = {
   'pokedex': '📚',
+  'party-builder': '🏟️',
   'calculator': '🧮',
   'external-links': '🔗',
   'settings': '⚙️'
@@ -65,6 +68,9 @@ export function initApp(container: HTMLElement) {
         break;
       case 'calculator':
         renderCalculatorHub(appMain, subTab).then(cleanup => { cleanupCurrentTab = cleanup; });
+        break;
+      case 'party-builder':
+        renderPartyBuilder(appMain).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'external-links':
         renderExternalLinks(appMain).then(cleanup => { cleanupCurrentTab = cleanup; });
@@ -125,40 +131,49 @@ export function initApp(container: HTMLElement) {
   // 초기 상태 로드 (LocalStorage) 및 반영
   const saved = loadSettings();
   if (saved) {
-    let hasOldCalculators = false;
+    // 1. 기존 탭 데이터 가져오기
+    let userTabs = saved.tabs || [...globalStore.getState().tabs];
+
+    // 2. 구버전 계산기 ID 처리 (제거 및 플래그 설정)
     const oldCalcIds = ['damage-calculator', 'stat-calculator', 'type-calculator', 'catch-calculator'];
-    
-    let updatedTabs = (saved.tabs || globalStore.getState().tabs).filter(tab => {
-        if (oldCalcIds.includes(tab.id)) {
-            hasOldCalculators = true;
-            return false;
+    let hasOldCalculators = userTabs.some(t => oldCalcIds.includes(t.id));
+    userTabs = userTabs.filter(t => !oldCalcIds.includes(t.id));
+
+    // 3. DEFAULT_TABS를 기준으로 동기화 (마이그레이션 핵심)
+    let finalTabs: TabItem[] = [...userTabs];
+
+    // 누락된 탭 추가 (순서 유지하며 삽입)
+    DEFAULT_TABS.forEach((defTab, index) => {
+        const exists = finalTabs.some(t => t.id === defTab.id);
+        if (!exists) {
+            finalTabs.splice(index, 0, { ...defTab });
         }
-        return true;
     });
 
-    if (hasOldCalculators && !updatedTabs.find(t => t.id === 'calculator')) {
-        const pokedexIndex = updatedTabs.findIndex(t => t.id === 'pokedex');
-        const newCalcTab = { id: 'calculator', currentName: '계산기', isVisible: true, isCustomized: false };
-        if (pokedexIndex !== -1) {
-            updatedTabs.splice(pokedexIndex + 1, 0, newCalcTab);
-        } else {
-            updatedTabs.unshift(newCalcTab);
-        }
-    }
-
-    updatedTabs = updatedTabs.map(tab => {
-        const isDefaultName = tab.currentName.includes('도감') || tab.currentName === '📕 포켓몬 도감';
-        if (tab.id === 'pokedex' && tab.isCustomized !== true && isDefaultName) {
-            return { ...tab, currentName: '도감', isCustomized: false };
+    // 커스터마이징 안 된 탭들 최신화 (이름, 아이콘 등)
+    finalTabs = finalTabs.map(tab => {
+        const defTab = DEFAULT_TABS.find(t => t.id === tab.id);
+        if (defTab && !tab.isCustomized) {
+            // 사용자가 수정한 적이 없다면 기본값으로 덮어씀 (이름, 아이콘, 기본 가시성 등)
+            return { ...defTab };
         }
         return tab;
     });
+
+    // 유효하지 않은 탭 제거 (DEFAULT_TABS에 없는 ID인 경우)
+    finalTabs = finalTabs.filter(tab => DEFAULT_TABS.some(t => t.id === tab.id));
+
+    // 구버전 계산기 사용자라면 계산기 탭 강제 노출
+    if (hasOldCalculators) {
+        const calcTab = finalTabs.find(t => t.id === 'calculator');
+        if (calcTab) calcTab.isVisible = true;
+    }
 
     globalStore.setState({
       isDarkMode: saved.isDarkMode,
       isCustomMode: saved.isCustomMode,
       generation: saved.generation,
-      tabs: updatedTabs,
+      tabs: finalTabs,
       visitCount: (saved.visitCount || 0) + 1,
       pwaGuideDismissed: saved.pwaGuideDismissed || false
     });

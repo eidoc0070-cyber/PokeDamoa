@@ -19,6 +19,44 @@ export const TYPE_COLORS: Record<PokemonType, string> = {
   dark: '#705848', steel: '#B7B7CE', fairy: '#D685AD'
 };
 
+export type StatKey = 'hp' | 'atk' | 'def' | 'spa' | 'spd' | 'spe';
+
+export interface Nature {
+  id: number;
+  nameKo: string;
+  nameEn: string;
+  plus?: StatKey;
+  minus?: StatKey;
+}
+
+export const NATURES: Nature[] = [
+  { id: 0, nameKo: '하디', nameEn: 'Hardy' },
+  { id: 1, nameKo: '외로움', nameEn: 'Lonely', plus: 'atk', minus: 'def' },
+  { id: 2, nameKo: '용감', nameEn: 'Brave', plus: 'atk', minus: 'spe' },
+  { id: 3, nameKo: '고집', nameEn: 'Adamant', plus: 'atk', minus: 'spa' },
+  { id: 4, nameKo: '개구쟁이', nameEn: 'Naughty', plus: 'atk', minus: 'spd' },
+  { id: 5, nameKo: '대담', nameEn: 'Bold', plus: 'def', minus: 'atk' },
+  { id: 6, nameKo: '온순', nameEn: 'Docile' },
+  { id: 7, nameKo: '무사태평', nameEn: 'Relaxed', plus: 'def', minus: 'spe' },
+  { id: 8, nameKo: '장난꾸러기', nameEn: 'Impish', plus: 'def', minus: 'spa' },
+  { id: 9, nameKo: '덜렁거림', nameEn: 'Lax', plus: 'def', minus: 'spd' },
+  { id: 10, nameKo: '겁쟁이', nameEn: 'Timid', plus: 'spe', minus: 'atk' },
+  { id: 11, nameKo: '성급', nameEn: 'Hasty', plus: 'spe', minus: 'def' },
+  { id: 12, nameKo: '진지', nameEn: 'Serious' },
+  { id: 13, nameKo: '명랑', nameEn: 'Jolly', plus: 'spe', minus: 'spa' },
+  { id: 14, nameKo: '천진난만', nameEn: 'Naive', plus: 'spe', minus: 'spd' },
+  { id: 15, nameKo: '조심', nameEn: 'Modest', plus: 'spa', minus: 'atk' },
+  { id: 16, nameKo: '의젓', nameEn: 'Mild', plus: 'spa', minus: 'def' },
+  { id: 17, nameKo: '냉정', nameEn: 'Quiet', plus: 'spa', minus: 'spe' },
+  { id: 18, nameKo: '수줍음', nameEn: 'Bashful' },
+  { id: 19, nameKo: '덜렁', nameEn: 'Rash', plus: 'spa', minus: 'spd' },
+  { id: 20, nameKo: '차분', nameEn: 'Calm', plus: 'spd', minus: 'atk' },
+  { id: 21, nameKo: '온화', nameEn: 'Gentle', plus: 'spd', minus: 'def' },
+  { id: 22, nameKo: '건방', nameEn: 'Sassy', plus: 'spd', minus: 'spe' },
+  { id: 23, nameKo: '신중', nameEn: 'Careful', plus: 'spd', minus: 'spa' },
+  { id: 24, nameKo: '변덕', nameEn: 'Quirky' }
+];
+
 // 기본 상성은 무조건 1.0
 const defaultMatchups = (): Record<PokemonType, number> => 
   Object.fromEntries(POKEMON_TYPES.map(t => [t, 1.0])) as Record<PokemonType, number>;

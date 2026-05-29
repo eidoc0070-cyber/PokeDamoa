@@ -4,6 +4,7 @@
 
 export const SETTINGS_KEY = 'pokedamoa_settings';
 export const EXTERNAL_LINKS_KEY = 'pokedamoa_external_links';
+export const PARTIES_KEY = 'pokedamoa_parties';
 const PRESETS_KEY = 'pokedamoa_presets';
 
 export interface TabItem {
@@ -15,6 +16,7 @@ export interface TabItem {
 
 export const DEFAULT_TABS: TabItem[] = [
     { id: 'pokedex', currentName: '📚 정보 도감', isVisible: true, isCustomized: false },
+    { id: 'party-builder', currentName: '🏟️ 파티 빌더', isVisible: true, isCustomized: false },
     { id: 'calculator', currentName: '🧮 계산기', isVisible: true, isCustomized: false },
     { id: 'external-links', currentName: '🔗 외부 링크', isVisible: true, isCustomized: true },
     { id: 'settings', currentName: '⚙️ 설정', isVisible: true, isCustomized: false },
@@ -77,4 +79,17 @@ export function deletePreset(name: string) {
     const presets = loadPresets();
     delete presets[name];
     localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+}
+
+export function saveParties(parties: any[]) {
+    localStorage.setItem(PARTIES_KEY, JSON.stringify(parties));
+}
+
+export function loadParties(): any[] {
+    const data = localStorage.getItem(PARTIES_KEY);
+    try {
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        return [];
+    }
 }
