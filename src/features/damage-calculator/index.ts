@@ -1,11 +1,12 @@
 import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
 import type { PokemonData, MoveData } from '../../data/pokeapi.js';
-import { TYPE_COLORS, TYPE_NAMES_KO, TYPE_MATCHUPS, POKEMON_TYPES } from '../../data/constants.js';
-import type { PokemonType } from '../../data/constants.js';
+import { TYPE_COLORS, TYPE_NAMES_KO, TYPE_MATCHUPS, POKEMON_TYPES, NATURES } from '../../data/constants.js';
+import type { PokemonType, StatKey } from '../../data/constants.js';
 import { calculateStat, calculateBaseDamage, calculateDamageRolls, getRankMultiplier, getStatsForGen, getTypesForGen, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from '../../utils/pokemon-math.js';
 import { createAutocomplete } from '../../components/SearchAutocomplete.js';
 import { globalStore } from '../../state/store.js';
 import { renderAccordion } from '../../components/Accordion.js'; // 모듈화된 아코디언 적용
+import { openPartySelectorModal } from '../party-builder/sub-components/PartySelectorModal.js';
 
 export async function renderDamageCalculator(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `<div style="text-align:center; padding: 40px;"><p>데이터를 불러오는 중...</p></div>`;
@@ -16,6 +17,9 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         let atkPoke: PokemonData | null = null;
         let atkStatVal = 100, spaStatVal = 100;
         let atkRank = 0, spaRank = 0;
+        let atkEvs = { hp: 0, atk: 252, def: 0, spa: 252, spd: 0, spe: 0 };
+        let atkIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+        let atkNatureId = 0;
         
         let selectedMove: MoveData | null = null;
         let movePower = 0, moveType = 'normal', moveCategory: 'physical' | 'special' = 'physical';
@@ -23,6 +27,9 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         let defPoke: PokemonData | null = null;
         let hpVal = 100, defVal = 100, spdVal = 100;
         let defRank = 0, spdRank = 0;
+        let defEvs = { hp: 252, atk: 0, def: 252, spa: 0, spd: 252, spe: 0 };
+        let defIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+        let defNatureId = 0;
 
         let level = 50, screenOn = false;
         let stabMod = 1.0, typeMulti = 1.0, itemMod = 1.0;
@@ -42,8 +49,16 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             const currentGen = globalStore.getState().generation;
             const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
             const stats = getStatsForGen(atkPoke, targetGen);
-            atkStatVal = calculateStat(stats.atk, 31, 252, level, false, 1.0);
-            spaStatVal = calculateStat(stats.spa, 31, 252, level, false, 1.0);
+            const nature = NATURES.find(n => n.id === atkNatureId);
+            
+            const getMod = (key: StatKey) => {
+                if (nature?.plus === key) return 1.1;
+                if (nature?.minus === key) return 0.9;
+                return 1.0;
+            };
+
+            atkStatVal = calculateStat(stats.atk, atkIvs.atk, atkEvs.atk, level, false, getMod('atk'));
+            spaStatVal = calculateStat(stats.spa, atkIvs.spa, atkEvs.spa, level, false, getMod('spa'));
         };
 
         const updateDefStats = () => {
@@ -51,12 +66,47 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             const currentGen = globalStore.getState().generation;
             const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
             const stats = getStatsForGen(defPoke, targetGen);
-            hpVal = calculateStat(stats.hp, 31, 252, level, true);
-            defVal = calculateStat(stats.def, 31, 252, level, false, 1.0);
-            spdVal = calculateStat(stats.spd, 31, 252, level, false, 1.0);
+            const nature = NATURES.find(n => n.id === defNatureId);
+
+            const getMod = (key: StatKey) => {
+                if (nature?.plus === key) return 1.1;
+                if (nature?.minus === key) return 0.9;
+                return 1.0;
+            };
+
+            hpVal = calculateStat(stats.hp, defIvs.hp, defEvs.hp, level, true);
+            defVal = calculateStat(stats.def, defIvs.def, defEvs.def, level, false, getMod('def'));
+            spdVal = calculateStat(stats.spd, defIvs.spd, defEvs.spd, level, false, getMod('spd'));
+        };
+
+        const updateModifiers = () => {
+            const currentGen = globalStore.getState().generation;
+            const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+
+            if (selectedMove && atkPoke) {
+                const types = getTypesForGen(atkPoke, targetGen);
+                stabMod = types.includes(selectedMove.type as any) ? 1.5 : 1.0;
+            } else {
+                stabMod = 1.0;
+            }
+
+            if (selectedMove && defPoke) {
+                const dTypes = getTypesForGen(defPoke, targetGen);
+                typeMulti = 1.0;
+                for (const dt of dTypes) {
+                    const genMatchups = TYPE_MATCHUPS;
+                    const typeMatchup = genMatchups[selectedMove.type as PokemonType];
+                    if (typeMatchup && typeMatchup[dt as PokemonType] !== undefined) {
+                        typeMulti *= typeMatchup[dt as PokemonType]!;
+                    }
+                }
+            } else {
+                typeMulti = 1.0;
+            }
         };
 
         const calculateDamageRange = () => {
+            updateModifiers();
             if (!selectedMove) return { rolls: [0], pcts: [0] };
             
             let rawAtk = moveCategory === 'physical' ? atkStatVal : spaStatVal;
@@ -81,24 +131,30 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             const currentGen = globalStore.getState().generation;
 
             const atkContent = `
-                <div id="atk-poke-search-container"></div>
+                <div style="display:flex; gap:8px; align-items:flex-end;">
+                    <div id="atk-poke-search-container" style="flex:1;"></div>
+                    <button id="btn-load-atk-party" class="btn" style="padding:8px; font-size:0.8rem; background:#f3e5f5; color:#7b1fa2; border-color:#e1bee7; margin-bottom:0; height:38px;">🏟️</button>
+                </div>
                 <div id="move-search-container" style="margin-top:15px;"></div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; background:rgba(0,0,0,0.02); padding:15px; border-radius:8px; border:1px solid #f0f0f0;">
                     <label style="font-weight:bold; display:flex; align-items:center; gap:8px;">
                         레벨 <input type="number" id="level-input" class="form-control" value="${level}" style="width:60px; padding:6px; text-align:center;" />
                     </label>
                     <div style="display:flex; flex-direction:column; text-align:right;">
-                        <span style="font-size:0.85rem; color:var(--text-muted);">실능치(극보정)</span>
+                        <span style="font-size:0.85rem; color:var(--text-muted);">실능치(보정보정)</span>
                         <span style="font-size:0.95rem;">공: <strong>${atkStatVal}</strong> | 특공: <strong>${spaStatVal}</strong></span>
                     </div>
                 </div>
             `;
 
             const defContent = `
-                <div id="def-poke-search-container"></div>
+                <div style="display:flex; gap:8px; align-items:flex-end;">
+                    <div id="def-poke-search-container" style="flex:1;"></div>
+                    <button id="btn-load-def-party" class="btn" style="padding:8px; font-size:0.8rem; background:#f3e5f5; color:#7b1fa2; border-color:#e1bee7; margin-bottom:0; height:38px;">🏟️</button>
+                </div>
                 <div style="margin-top:15px; background:rgba(0,0,0,0.02); padding:15px; border-radius:8px; border:1px solid #f0f0f0;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="font-weight:bold; color:var(--text-color);">HP 실능 (극보정)</span>
+                        <span style="font-weight:bold; color:var(--text-color);">HP 실능 (보정보정)</span>
                         <strong style="color:#d32f2f; font-size:1.1rem;">${hpVal}</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:0.9rem; color:var(--text-muted);">
@@ -158,6 +214,41 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 }
             });
 
+            container.querySelector('#btn-load-atk-party')?.addEventListener('click', () => {
+                openPartySelectorModal((slot) => {
+                    const p = fullPokes.find(p => p.id === slot.pokemonId);
+                    if (p) {
+                        atkPoke = p;
+                        atkEvs = { ...slot.evs };
+                        atkIvs = { ...slot.ivs };
+                        atkNatureId = slot.natureId;
+                        level = slot.level;
+                        updateAtkStats();
+                        updateDefStats(); // Level might have changed
+                        if (moveAutocomplete) {
+                            moveAutocomplete.setData(getSortedMoves(p));
+                        }
+                        renderUI();
+                    }
+                });
+            });
+
+            container.querySelector('#btn-load-def-party')?.addEventListener('click', () => {
+                openPartySelectorModal((slot) => {
+                    const p = fullPokes.find(p => p.id === slot.pokemonId);
+                    if (p) {
+                        defPoke = p;
+                        defEvs = { ...slot.evs };
+                        defIvs = { ...slot.ivs };
+                        defNatureId = slot.natureId;
+                        level = slot.level;
+                        updateAtkStats(); // Level might have changed
+                        updateDefStats();
+                        renderUI();
+                    }
+                });
+            });
+
             createAutocomplete({
                 container: container.querySelector('#atk-poke-search-container')!,
                 label: '공격자 포켓몬', placeholder: '이름 입력', data: fullPokes.filter(p => p.genId <= targetGen),
@@ -165,6 +256,9 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
                 onSelect: p => { 
                     atkPoke = p; 
+                    atkEvs = { hp: 0, atk: 252, def: 0, spa: 252, spd: 0, spe: 0 };
+                    atkIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+                    atkNatureId = 0;
                     updateAtkStats(); 
                     if (moveAutocomplete) {
                         const currentGen = globalStore.getState().generation;
@@ -184,7 +278,12 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 initialValue: defPoke?.nameKo,
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
                 onSelect: p => { 
-                    defPoke = p; updateDefStats(); renderUI(); 
+                    defPoke = p; 
+                    defEvs = { hp: 252, atk: 0, def: 252, spa: 0, spd: 252, spe: 0 };
+                    defIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+                    defNatureId = 0;
+                    updateDefStats(); 
+                    renderUI(); 
                 }
             });
 
@@ -199,22 +298,6 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS),
                 onSelect: m => { 
                     selectedMove = m; movePower = m.power || 0; moveType = m.type; moveCategory = m.category as any;
-                    if (atkPoke) {
-                        const types = getTypesForGen(atkPoke, targetGen);
-                        stabMod = types.includes(m.type as any) ? 1.5 : 1.0;
-                    }
-                    typeMulti = 1.0;
-                    if (defPoke) {
-                        const dTypes = getTypesForGen(defPoke, targetGen);
-                        typeMulti = 1.0;
-                        for (const dt of dTypes) {
-                            const genMatchups = TYPE_MATCHUPS;
-                            const typeMatchup = genMatchups[m.type as PokemonType];
-                            if (typeMatchup && typeMatchup[dt as PokemonType] !== undefined) {
-                                typeMulti *= typeMatchup[dt as PokemonType]!;
-                            }
-                        }
-                    }
                     renderUI(); 
                 }
             });

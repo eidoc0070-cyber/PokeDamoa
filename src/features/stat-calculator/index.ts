@@ -1,10 +1,11 @@
 import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
 import type { PokemonData, MoveData } from '../../data/pokeapi.js';
-import { TYPE_COLORS, TYPE_NAMES_KO } from '../../data/constants.js';
+import { TYPE_COLORS, TYPE_NAMES_KO, NATURES } from '../../data/constants.js';
 import { calculateStat, calculateBulk, calculatePower, getStatsForGen, getTypesForGen, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from '../../utils/pokemon-math.js';
 import { createAutocomplete } from '../../components/SearchAutocomplete.js';
 import { renderStatInputCard } from '../../components/StatInputCard.js'; // 모듈화된 카드 UI
 import { globalStore } from '../../state/store.js';
+import { openPartySelectorModal } from '../party-builder/sub-components/PartySelectorModal.js';
 
 const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
 type StatKey = typeof STAT_KEYS[number];
@@ -95,6 +96,9 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                             </label>
                             
                             <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; margin: 0 4px;">
+                                <button id="btn-load-party" style="padding: 6px 0; margin-bottom: 2px; font-size: 0.75rem; font-weight:bold; background:#f3e5f5; color:#7b1fa2; border:1px solid #e1bee7; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+                                    🏟️ 파티에서 불러오기
+                                </button>
                                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;">
                                     <button class="btn-preset" data-preset="phys-atk" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#fff5f0; color:#e65100; border:1px solid #ffccbc; border-radius:6px; cursor:pointer;">물공 극보</button>
                                     <button class="btn-preset" data-preset="spec-atk" style="padding: 6px 0; font-size: 0.7rem; font-weight:bold; background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb; border-radius:6px; cursor:pointer;">특공 극보</button>
@@ -190,6 +194,11 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
                 onSelect: p => { 
                     selectedPoke = p; 
+                    evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                    ivs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
+                    naturePlus = 'none';
+                    natureMinus = 'none';
+                    
                     const gen = globalStore.getState().generation;
                     const targetGen = gen === 'champions' ? 9 : gen as number;
                     baseStats = { ...getStatsForGen(p, targetGen) as any }; 
@@ -215,6 +224,30 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 onSelect: m => { selectedMove = m; renderUI(); },
                 getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
                 renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+            });
+
+            container.querySelector('#btn-load-party')?.addEventListener('click', () => {
+                openPartySelectorModal((slot) => {
+                    const poke = fullData.find(p => p.id === slot.pokemonId);
+                    if (poke) {
+                        selectedPoke = poke;
+                        level = slot.level;
+                        ivs = { ...slot.ivs };
+                        evs = { ...slot.evs };
+                        const nature = NATURES.find(n => n.id === slot.natureId);
+                        naturePlus = nature?.plus || 'none';
+                        natureMinus = nature?.minus || 'none';
+                        
+                        const gen = globalStore.getState().generation;
+                        const targetGen = gen === 'champions' ? 9 : gen as number;
+                        baseStats = { ...getStatsForGen(poke, targetGen) as any };
+                        
+                        if (moveAutocomplete) {
+                            moveAutocomplete.setData(getSortedMoves());
+                        }
+                        renderUI();
+                    }
+                });
             });
 
             container.querySelector('#level-input')?.addEventListener('change', (e) => {

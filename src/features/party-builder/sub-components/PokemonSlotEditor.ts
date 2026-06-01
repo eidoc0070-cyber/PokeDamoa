@@ -15,6 +15,8 @@ interface SlotEditorOptions {
 export function renderPokemonSlotEditor(options: SlotEditorOptions) {
     const { container, slot, ctx, onUpdate } = options;
     
+    const REVERSE_STAT_MAP: Record<StatKey, string> = { hp: '체력', atk: '공격', def: '방어', spa: '특공', spd: '특방', spe: '스피드' };
+
     container.innerHTML = `
         <div class="slot-editor card" style="padding: 15px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 12px; background: var(--surface-color);">
             <div class="slot-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -64,8 +66,6 @@ export function renderPokemonSlotEditor(options: SlotEditorOptions) {
             </div>
         </div>
     `;
-
-    const REVERSE_STAT_MAP: Record<StatKey, string> = { hp: '체력', atk: '공격', def: '방어', spa: '특공', spd: '특방', spe: '스피드' };
 
     // Events & Autocompletes
     const pokeInput = createAutocomplete({
