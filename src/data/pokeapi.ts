@@ -32,6 +32,9 @@ export interface MoveData {
     type: PokemonType;
     category: 'status' | 'physical' | 'special';
     effect?: string;
+    flavorText?: string;
+    effectTags?: any[];
+    priority?: number;
     changelog: { 
         genId: number; 
         power: number | null; 
@@ -47,6 +50,7 @@ export interface AbilityData {
     nameEn: string;
     searchKey: string;
     effect: string;
+    flavorText?: string;
 }
 
 export interface ItemData {
@@ -55,6 +59,7 @@ export interface ItemData {
     nameEn: string;
     searchKey: string;
     effect: string;
+    flavorText?: string;
     category: number;
 }
 

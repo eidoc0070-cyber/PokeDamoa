@@ -98,16 +98,34 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
                     <span style="font-weight: bold; font-size: 1.1rem;">${m.nameKo}</span>
                     <span style="font-size: 0.8rem; color: #888;">${m.nameEn.toUpperCase()}</span>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+                <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
                     <span style="background: ${TYPE_COLORS[m.type]}; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${TYPE_NAMES_KO[m.type] || m.type}</span>
                     <span style="background: #eee; color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${m.category === 'physical' ? '물리' : m.category === 'special' ? '특수' : '변화'}</span>
                     <span style="font-weight: bold; font-size: 0.9rem;">위력: ${m.power || '-'}</span>
-                    <span style="font-weight: bold; font-size: 0.9rem; margin-left:5px;">명중: ${m.accuracy || '-'}</span>
-                    <span style="font-weight: bold; font-size: 0.9rem; margin-left:5px;">PP: ${m.pp || '-'}</span>
+                    <span style="font-weight: bold; font-size: 0.9rem;">명중: ${m.accuracy || '-'}</span>
+                    <span style="font-weight: bold; font-size: 0.9rem;">PP: ${m.pp || '-'}</span>
+                    ${(m.priority || 0) !== 0 ? `<span style="background:#fce4ec; color:#d81b60; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight:bold;">우선도: ${m.priority! > 0 ? '+' : ''}${m.priority}</span>` : ''}
                 </div>
-                <div style="font-size: 0.85rem; color: #555; line-height: 1.4; background: rgba(0,0,0,0.02); padding: 8px; border-radius: 4px;">
-                    ${m.effect || '상세 설명이 없습니다.'}
+                <div style="font-size: 0.85rem; color: #333; line-height: 1.5; background: rgba(var(--primary-rgb), 0.05); padding: 10px; border-radius: 6px; margin-bottom: 5px;">
+                    ${m.flavorText || m.effect || '상세 설명이 없습니다.'}
                 </div>
+                ${m.effect && m.flavorText ? `
+                    <details style="font-size: 0.75rem; color: #777; cursor: pointer;">
+                        <summary>기술 상세 효과 (Technical)</summary>
+                        <div style="padding: 5px; margin-top: 5px; border-top: 1px dashed #ddd;">${m.effect}</div>
+                    </details>
+                ` : ''}
+                ${m.effectTags && m.effectTags.length > 0 ? `
+                    <div style="display:flex; gap:4px; margin-top:8px; flex-wrap: wrap;">
+                        ${m.effectTags.map((tag: any) => {
+                            let label = '';
+                            if (tag.type === 'rank') label = `${tag.stat.toUpperCase()} ${tag.change > 0 ? '+' : ''}${tag.change}`;
+                            else if (tag.type === 'status') label = `상태이상(${tag.ailmentId})`;
+                            else label = tag.type;
+                            return `<span style="border: 1px solid #ddd; padding: 1px 5px; border-radius: 4px; font-size: 0.7rem; color: #666;">#${label}</span>`;
+                        }).join('')}
+                    </div>
+                ` : ''}
             </div>
         `;
 

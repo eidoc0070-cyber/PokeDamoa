@@ -27,15 +27,22 @@ export async function renderItemList(container: HTMLElement): Promise<() => void
         const btnLoadMore = container.querySelector('#btn-load-more') as HTMLButtonElement;
 
         const createItemHTML = (i: ItemData) => `
-            <div style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 12px; align-items: flex-start;">
+            <div class="item-card" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 12px; align-items: flex-start;">
                 <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${i.nameEn}.png" alt="${i.nameKo}" style="width: 32px; height: 32px; image-rendering: pixelated; background: rgba(0,0,0,0.03); border-radius: 4px;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZWVlIi8+PC9zdmc+'" />
                 <div style="flex: 1;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                        <span style="font-weight: bold; font-size: 1rem;">${i.nameKo}</span>
+                        <span style="font-weight: bold; font-size: 1rem; color: var(--primary-color);">${i.nameKo}</span>
+                        <span style="font-size: 0.7rem; color: #aaa;">ID: ${i.id}</span>
                     </div>
-                    <div style="font-size: 0.8rem; color: #666; line-height: 1.4;">
-                        ${i.effect || '설명이 없습니다.'}
+                    <div style="font-size: 0.85rem; color: #333; line-height: 1.4; background: rgba(var(--primary-rgb), 0.05); padding: 8px; border-radius: 6px;">
+                        ${i.flavorText || i.effect || '설명이 없습니다.'}
                     </div>
+                    ${i.effect && i.flavorText ? `
+                        <details style="font-size: 0.7rem; color: #777; cursor: pointer; margin-top: 5px;">
+                            <summary>상세 효과 (Technical)</summary>
+                            <div style="padding: 4px; border-top: 1px dashed #ddd; margin-top: 4px;">${i.effect}</div>
+                        </details>
+                    ` : ''}
                 </div>
             </div>
         `;

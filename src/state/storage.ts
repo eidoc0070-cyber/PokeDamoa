@@ -18,6 +18,7 @@ export const DEFAULT_TABS: TabItem[] = [
     { id: 'pokedex', currentName: '📚 정보 도감', isVisible: true, isCustomized: false },
     { id: 'party-builder', currentName: '🏟️ 파티 빌더', isVisible: true, isCustomized: false },
     { id: 'calculator', currentName: '🧮 계산기', isVisible: true, isCustomized: false },
+    { id: 'battle-ai', currentName: '🥊 샌드백 AI', isVisible: true, isCustomized: false },
     { id: 'external-links', currentName: '🔗 외부 링크', isVisible: true, isCustomized: true },
     { id: 'settings', currentName: '⚙️ 설정', isVisible: true, isCustomized: false },
 ];

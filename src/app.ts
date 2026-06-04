@@ -8,6 +8,7 @@ import { renderPokedex } from './features/pokedex/index.js';
 import { renderCalculatorHub } from './features/calculator/index.js';
 import { renderExternalLinks } from './features/external-links/index.js';
 import { renderPartyBuilder } from './features/party-builder/index.js';
+import { renderBattleAi } from './features/battle-ai/index.js';
 import { initPwaBanner } from './components/PwaBanner.js';
 
 // 탭 ID에 따른 아이콘 매핑
@@ -15,6 +16,7 @@ const TAB_ICONS: Record<string, string> = {
   'pokedex': '📚',
   'party-builder': '🏟️',
   'calculator': '🧮',
+  'battle-ai': '🥊',
   'external-links': '🔗',
   'settings': '⚙️'
 };
@@ -71,6 +73,9 @@ export function initApp(container: HTMLElement) {
         break;
       case 'party-builder':
         renderPartyBuilder(appMain).then(cleanup => { cleanupCurrentTab = cleanup; });
+        break;
+      case 'battle-ai':
+        renderBattleAi(appMain).then(cleanup => { cleanupCurrentTab = cleanup; });
         break;
       case 'external-links':
         renderExternalLinks(appMain).then(cleanup => { cleanupCurrentTab = cleanup; });

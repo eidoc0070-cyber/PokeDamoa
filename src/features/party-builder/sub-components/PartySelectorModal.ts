@@ -2,7 +2,7 @@ import { loadParties } from '../../../state/storage.js';
 import type { Party, PokemonSlot } from '../types.js';
 import { fetchPokedexData } from '../../../data/pokeapi.js';
 
-export async function openPartySelectorModal(onSelect: (slot: PokemonSlot) => void) {
+export async function openPartySelectorModal(onSelect: (slot: PokemonSlot, party: Party) => void) {
     const parties: Party[] = loadParties();
     const pokedex = await fetchPokedexData();
 
@@ -81,13 +81,31 @@ export async function openPartySelectorModal(onSelect: (slot: PokemonSlot) => vo
 
     modalContent.querySelector('#modal-close-btn')?.addEventListener('click', close);
 
+    modalContent.querySelectorAll('.party-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            // member-slot 클릭은 별도로 처리하므로 여기서는 무시 (버블링 방지 처리를 아래에서 함)
+            if ((e.target as HTMLElement).closest('.member-slot')) return;
+
+            const partyId = item.getAttribute('data-id');
+            const party = parties.find(p => p.id === partyId);
+            if (party) {
+                const firstSlot = party.members.find(m => m.pokemonId !== 0) || party.members[0];
+                if (firstSlot) {
+                    onSelect(firstSlot, party);
+                    close();
+                }
+            }
+        });
+    });
+
     modalContent.querySelectorAll('.member-slot').forEach(slot => {
-        slot.addEventListener('click', () => {
+        slot.addEventListener('click', (e) => {
+            e.stopPropagation(); // party-item 클릭 이벤트로 전파 방지
             const partyId = slot.getAttribute('data-party-id');
             const slotIdx = parseInt(slot.getAttribute('data-slot-idx')!);
             const party = parties.find(p => p.id === partyId);
             if (party && party.members[slotIdx]) {
-                onSelect(party.members[slotIdx]);
+                onSelect(party.members[slotIdx], party);
                 close();
             }
         });

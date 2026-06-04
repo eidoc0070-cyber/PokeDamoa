@@ -11,10 +11,10 @@
     "build:data": "bun scripts/build-data.ts"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "^20.9.0",
-    "@types/bun": "^1.3.13",
-    "happy-dom": "^20.9.0",
+    "@happy-dom/global-registrator": "^20.10.0",
+    "@types/bun": "^1.3.14",
+    "happy-dom": "^20.10.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.8"
+    "vite": "^8.0.16"
   }
 }

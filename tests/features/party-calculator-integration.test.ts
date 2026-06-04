@@ -64,9 +64,10 @@ describe('Party-Calculator Integration', () => {
         if (memberSlot) {
             memberSlot.click();
             expect(selectedSlot).not.toBeNull();
-            expect(selectedSlot?.pokemonId).toBe(445);
-            expect(selectedSlot?.natureId).toBe(13);
-            expect(selectedSlot?.evs.atk).toBe(252);
+            const slot = selectedSlot as any as PokemonSlot;
+            expect(slot.pokemonId).toBe(445);
+            expect(slot.natureId).toBe(13);
+            expect(slot.evs.atk).toBe(252);
         }
     });
 });

@@ -27,14 +27,20 @@ export async function renderAbilityList(container: HTMLElement): Promise<() => v
         const btnLoadMore = container.querySelector('#btn-load-more') as HTMLButtonElement;
 
         const createItemHTML = (a: AbilityData) => `
-            <div style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div class="ability-item" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                     <span style="font-weight: bold; font-size: 1.1rem; color: var(--primary-color);">${a.nameKo}</span>
                     <span style="font-size: 0.8rem; color: #888;">${a.nameEn.toUpperCase()}</span>
                 </div>
-                <div style="font-size: 0.85rem; color: #555; line-height: 1.5; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 4px;">
-                    ${a.effect || '상세 설명이 없습니다.'}
+                <div style="font-size: 0.85rem; color: #333; line-height: 1.5; background: rgba(var(--primary-rgb), 0.05); padding: 10px; border-radius: 6px;">
+                    ${a.flavorText || a.effect || '상세 설명이 없습니다.'}
                 </div>
+                ${a.effect && a.flavorText ? `
+                    <details style="font-size: 0.75rem; color: #777; cursor: pointer; margin-top: 5px;">
+                        <summary>상세 효과 (Technical)</summary>
+                        <div style="padding: 5px; border-top: 1px dashed #ddd; margin-top: 5px;">${a.effect}</div>
+                    </details>
+                ` : ''}
             </div>
         `;
 

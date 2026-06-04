@@ -74,15 +74,20 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const movesList = parseCSV(csvDir, 'moves.csv');
     const moveNamesList = parseCSV(csvDir, 'move_names.csv');
     const moveEffectProseList = parseCSV(csvDir, 'move_effect_prose.csv');
+    const moveFlavorTextList = parseCSV(csvDir, 'move_flavor_text.csv');
+    const moveMetaList = parseCSV(csvDir, 'move_meta.csv');
+    const moveMetaStatChangesList = parseCSV(csvDir, 'move_meta_stat_changes.csv');
     const moveChangelogList = parseCSV(csvDir, 'move_changelog.csv');
 
     const abilitiesList = parseCSV(csvDir, 'abilities.csv');
     const abilityNamesList = parseCSV(csvDir, 'ability_names.csv');
     const abilityProseList = parseCSV(csvDir, 'ability_prose.csv');
+    const abilityFlavorTextList = parseCSV(csvDir, 'ability_flavor_text.csv');
 
     const itemsList = parseCSV(csvDir, 'items.csv');
     const itemNamesList = parseCSV(csvDir, 'item_names.csv');
     const itemProseList = parseCSV(csvDir, 'item_prose.csv');
+    const itemFlavorTextList = parseCSV(csvDir, 'item_flavor_text.csv');
     
     const encountersList = parseCSV(csvDir, 'encounters.csv');
     const locationsList = parseCSV(csvDir, 'locations.csv');
@@ -338,11 +343,80 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     const moveEffectMap = new Map<number, string>();
     moveEffectProseList.forEach(mep => { if (mep.local_language_id === '3') moveEffectMap.set(parseInt(mep.move_effect_id), mep.short_effect || mep.effect); });
 
+    // 상세 설명 (Flavor Text) 매핑 - 가장 최신 버전 그룹 선호
+    const getLatestFlavorText = (list: any[], idField: string) => {
+        const map = new Map<number, { text: string, vgId: number }>();
+        list.forEach(item => {
+            const langId = item.language_id || item.local_language_id;
+            if (langId === '3') {
+                const id = parseInt(item[idField]);
+                const vgId = parseInt(item.version_group_id || item.version_id || '0');
+                const text = (item.flavor_text || '').replace(/\f/g, ' ').replace(/\n/g, ' ');
+                if (!map.has(id) || vgId >= map.get(id)!.vgId) {
+                    map.set(id, { text, vgId });
+                }
+            }
+        });
+        return map;
+    };
+
+    const moveFlavorMap = getLatestFlavorText(moveFlavorTextList, 'move_id');
+    const abilityFlavorMap = getLatestFlavorText(abilityFlavorTextList, 'ability_id');
+    const itemFlavorMap = getLatestFlavorText(itemFlavorTextList, 'item_id');
+
+    // 기술 메타 데이터 및 랭크 변화 매핑
+    const moveStatChangesMap = new Map<number, any[]>();
+    moveMetaStatChangesList.forEach(sc => {
+        const mid = parseInt(sc.move_id);
+        if (!moveStatChangesMap.has(mid)) moveStatChangesMap.set(mid, []);
+        moveStatChangesMap.get(mid)!.push({
+            statId: parseInt(sc.stat_id),
+            change: parseInt(sc.change)
+        });
+    });
+
+    const statIdToKey: Record<number, string> = {
+        2: 'atk', 3: 'def', 4: 'spa', 5: 'spd', 6: 'spe', 7: 'accuracy', 8: 'evasion'
+    };
+
+    const moveMetaMap = new Map<number, any>();
+    moveMetaList.forEach(mm => {
+        moveMetaMap.set(parseInt(mm.move_id), {
+            ailmentId: parseInt(mm.meta_ailment_id),
+            drain: parseInt(mm.drain),
+            healing: parseInt(mm.healing),
+            ailmentChance: parseInt(mm.ailment_chance),
+            flinchChance: parseInt(mm.flinch_chance),
+            statChance: parseInt(mm.stat_chance)
+        });
+    });
+
     const finalMoves: any[] = [];
     movesList.forEach(m => {
       const id = parseInt(m.id);
       const nameKo = moveNameMap.get(id) || m.identifier;
       const { disassembled, initialConsonants } = disassembleHangul(nameKo);
+      
+      // 메타 정보 기반 효과 태그 생성
+      const meta = moveMetaMap.get(id);
+      const statChanges = moveStatChangesMap.get(id);
+      const effectTags: any[] = [];
+
+      if (statChanges) {
+          statChanges.forEach((sc: any) => {
+              const statKey = statIdToKey[sc.statId];
+              if (statKey) {
+                  effectTags.push({ type: 'rank', stat: statKey, change: sc.change });
+              }
+          });
+      }
+      if (meta) {
+          if (meta.ailmentId > 0) effectTags.push({ type: 'status', ailmentId: meta.ailmentId, chance: meta.ailmentChance || 100 });
+          if (meta.drain !== 0) effectTags.push({ type: 'drain', value: meta.drain });
+          if (meta.healing !== 0) effectTags.push({ type: 'heal', value: meta.healing });
+          if (meta.flinchChance > 0) effectTags.push({ type: 'flinch', chance: meta.flinchChance });
+      }
+
       finalMoves.push({
         id, nameKo, nameEn: m.identifier, 
         searchKey: `${nameKo}|${m.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
@@ -352,6 +426,9 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         type: typeIdMap.get(parseInt(m.type_id)) || 'unknown',
         category: parseInt(m.damage_class_id) === 2 ? 'physical' : parseInt(m.damage_class_id) === 3 ? 'special' : 'status',
         effect: moveEffectMap.get(parseInt(m.effect_id)) || '',
+        flavorText: moveFlavorMap.get(id)?.text || '',
+        effectTags,
+        priority: parseInt(m.priority) || 0,
         changelog: moveChangelogMap.get(id) || []
       });
     });
@@ -372,7 +449,8 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         searchKey: `${nameKo}|${a.identifier.toLowerCase()}|${disassembled}|${initialConsonants}`,
         d: disassembled,
         c: initialConsonants,
-        effect: abilityEffectMap.get(id) || '' 
+        effect: abilityEffectMap.get(id) || '',
+        flavorText: abilityFlavorMap.get(id)?.text || ''
       });
     });
     fs.writeFileSync(DEFAULT_ABILITIES_OUTPUT_FILE, JSON.stringify(finalAbilities, null, 0), 'utf-8');
@@ -392,6 +470,7 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         d: disassembled,
         c: initialConsonants,
         effect: itemEffectMap.get(id) || '', 
+        flavorText: itemFlavorMap.get(id)?.text || '',
         category: parseInt(item.category_id) 
       });
     });
