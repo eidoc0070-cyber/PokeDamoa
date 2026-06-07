@@ -67,6 +67,7 @@ let cachedData: PokemonData[] | null = null;
 let cachedMovesData: MoveData[] | null = null;
 let cachedAbilitiesData: AbilityData[] | null = null;
 let cachedItemsData: ItemData[] | null = null;
+let cachedStatusData: any = null;
 
 async function checkVersion(): Promise<boolean> {
     try {
@@ -92,11 +93,25 @@ async function smartFetch<T>(key: string, url: string, isVersionMatch: boolean):
         if (localData) return localData;
     }
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-    const data = await response.json();
-    await saveToDB(key, data);
-    return data;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        const data = await response.json();
+        await saveToDB(key, data);
+        return data;
+    } catch {
+        return [];
+    }
+}
+
+async function fetchCustomData<T>(url: string): Promise<T[]> {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        return await response.json();
+    } catch {
+        return [];
+    }
 }
 
 let versionMatchPromise: Promise<boolean> | null = null;
@@ -110,12 +125,27 @@ async function getIsVersionMatch() {
 
 /**
  * 사전 빌드된 /pokedex-data.json 정적 파일을 가져옵니다. (IndexedDB 캐싱 활용)
+ * custom-pokedex.json 데이터와 병합합니다.
  */
 export async function fetchPokedexData(): Promise<PokemonData[]> {
     if (cachedData) return cachedData;
     try {
         const isMatch = await getIsVersionMatch();
-        cachedData = await smartFetch<PokemonData>('pokedex_data', '/pokedex-data.json', isMatch);
+        const baseData = await smartFetch<PokemonData>('pokedex_data', '/pokedex-data.json', isMatch);
+        const customData = await fetchCustomData<PokemonData>('/custom-pokedex.json');
+        
+        // 커스텀 데이터가 우선순위를 가짐 (ID 충돌 시 커스텀 데이터로 덮어쓰기)
+        const combined = [...baseData];
+        customData.forEach(custom => {
+            const index = combined.findIndex(p => p.id === custom.id);
+            if (index !== -1) {
+                combined[index] = custom;
+            } else {
+                combined.push(custom);
+            }
+        });
+
+        cachedData = combined;
         return cachedData;
     } catch (e) {
         console.error('도감 데이터 로드 실패:', e);
@@ -130,7 +160,20 @@ export async function fetchMovesData(): Promise<MoveData[]> {
     if (cachedMovesData) return cachedMovesData;
     try {
         const isMatch = await getIsVersionMatch();
-        cachedMovesData = await smartFetch<MoveData>('moves_data', '/moves-data.json', isMatch);
+        const baseData = await smartFetch<MoveData>('moves_data', '/moves-data.json', isMatch);
+        const customData = await fetchCustomData<MoveData>('/custom-moves.json');
+
+        const combined = [...baseData];
+        customData.forEach(custom => {
+            const index = combined.findIndex(m => m.id === custom.id);
+            if (index !== -1) {
+                combined[index] = custom;
+            } else {
+                combined.push(custom);
+            }
+        });
+
+        cachedMovesData = combined;
         return cachedMovesData;
     } catch (e) {
         console.error('기술 데이터 로드 실패:', e);
@@ -145,7 +188,20 @@ export async function fetchAbilitiesData(): Promise<AbilityData[]> {
     if (cachedAbilitiesData) return cachedAbilitiesData;
     try {
         const isMatch = await getIsVersionMatch();
-        cachedAbilitiesData = await smartFetch<AbilityData>('abilities_data', '/abilities-data.json', isMatch);
+        const baseData = await smartFetch<AbilityData>('abilities_data', '/abilities-data.json', isMatch);
+        const customData = await fetchCustomData<AbilityData>('/custom-abilities.json');
+
+        const combined = [...baseData];
+        customData.forEach(custom => {
+            const index = combined.findIndex(a => a.id === custom.id);
+            if (index !== -1) {
+                combined[index] = custom;
+            } else {
+                combined.push(custom);
+            }
+        });
+
+        cachedAbilitiesData = combined;
         return cachedAbilitiesData;
     } catch (e) {
         console.error('특성 데이터 로드 실패:', e);
@@ -160,11 +216,39 @@ export async function fetchItemsData(): Promise<ItemData[]> {
     if (cachedItemsData) return cachedItemsData;
     try {
         const isMatch = await getIsVersionMatch();
-        cachedItemsData = await smartFetch<ItemData>('items_data', '/items-data.json', isMatch);
+        const baseData = await smartFetch<ItemData>('items_data', '/items-data.json', isMatch);
+        const customData = await fetchCustomData<ItemData>('/custom-items.json');
+
+        const combined = [...baseData];
+        customData.forEach(custom => {
+            const index = combined.findIndex(i => i.id === custom.id);
+            if (index !== -1) {
+                combined[index] = custom;
+            } else {
+                combined.push(custom);
+            }
+        });
+
+        cachedItemsData = combined;
         return cachedItemsData;
     } catch (e) {
         console.error('아이템 데이터 로드 실패:', e);
         return [];
+    }
+}
+
+/**
+ * 상태이상 데이터를 가져옵니다.
+ */
+export async function fetchStatusData(): Promise<any> {
+    if (cachedStatusData) return cachedStatusData;
+    try {
+        const response = await fetch('/statuses-data.json');
+        if (!response.ok) return {};
+        cachedStatusData = await response.json();
+        return cachedStatusData;
+    } catch {
+        return {};
     }
 }
 

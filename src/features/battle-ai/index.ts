@@ -1,4 +1,4 @@
-import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
+import { fetchPokedexData, fetchMovesData, fetchStatusData } from '../../data/pokeapi.js';
 import type { PokemonData, MoveData } from '../../data/pokeapi.js';
 import { loadParties } from '../../state/storage.js';
 import type { Party, PokemonSlot } from '../party-builder/types.js';
@@ -6,14 +6,23 @@ import { openPartySelectorModal } from '../party-builder/sub-components/PartySel
 import { calculateStat } from '../../utils/pokemon-math.js';
 import { NATURES } from '../../data/constants.js';
 import type { BattleState, BattlePokemon, BattleSide, AILevel, BattleAction } from './types.js';
-import { executeTurn } from './engine.js';
+import { executeTurn, executeEffects } from './engine.js';
 import { getAiAction } from './ai.js';
 
 export async function renderBattleAi(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `<div style="text-align:center; padding: 40px;"><p>배틀 시뮬레이터 로드 중...</p></div>`;
 
     try {
-        const [fullPokes, fullMoves] = await Promise.all([fetchPokedexData(), fetchMovesData()]);
+        const [fullPokes, fullMoves, statusData] = await Promise.all([
+            fetchPokedexData(), 
+            fetchMovesData(),
+            fetchStatusData()
+        ]);
+        
+        if (fullPokes.length === 0 || fullMoves.length === 0) {
+            throw new Error('포켓몬 또는 기술 데이터를 불러오지 못했습니다. 새로고침을 시도해보세요.');
+        }
+
         const savedParties = loadParties();
 
         let playerParty: Party | null = savedParties.length > 0 ? savedParties[0] : null;
@@ -24,7 +33,10 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
         let battleState: BattleState | null = null;
 
         const initBattlePoke = (slot: PokemonSlot): BattlePokemon => {
-            const data = fullPokes.find(p => p.id === slot.pokemonId)!;
+            const data = fullPokes.find(p => p.id === slot.pokemonId);
+            if (!data) {
+                throw new Error(`Pokemon data not found for ID: ${slot.pokemonId}`);
+            }
             const nature = NATURES.find(n => n.id === slot.natureId);
             const getMod = (key: any) => {
                 if (nature?.plus === key) return 1.1;
@@ -51,36 +63,44 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
                 calculatedStats: stats,
                 ranks: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 },
                 moves,
-                isFainted: false
+                isFainted: false,
+                effectTags: [],
+                abilityId: slot.abilityId ?? null,
+                itemId: slot.itemId ?? null
             };
         };
 
         const startBattle = () => {
-            if (!playerParty || opponentParties.length === 0) {
-                alert('자신의 파티와 상대 파티를 선택해주세요.');
-                return;
-            }
+            try {
+                if (!playerParty || opponentParties.length === 0) {
+                    alert('자신의 파티와 상대 파티를 선택해주세요.');
+                    return;
+                }
 
-            // 상대 파티 선택
-            const randomOpponentParty = opponentParties[Math.floor(Math.random() * opponentParties.length)];
-            if (!randomOpponentParty) return;
-            
-            // AI 선출 결정 (내부적으로 3마리 미리 결정)
-            let opponentTeamSlots: PokemonSlot[] = [];
-            if (selectionStrategy === 'order') {
-                opponentTeamSlots = randomOpponentParty.members.slice(0, 3);
-            } else {
-                const shuffled = [...randomOpponentParty.members].sort(() => 0.5 - Math.random());
-                opponentTeamSlots = shuffled.slice(0, 3);
-            }
+                // 상대 파티 선택
+                const randomOpponentParty = opponentParties[Math.floor(Math.random() * opponentParties.length)];
+                if (!randomOpponentParty) return;
+                
+                // AI 선출 결정 (내부적으로 3마리 미리 결정)
+                let opponentTeamSlots: PokemonSlot[] = [];
+                if (selectionStrategy === 'order') {
+                    opponentTeamSlots = randomOpponentParty.members.slice(0, 3);
+                } else {
+                    const shuffled = [...randomOpponentParty.members].sort(() => 0.5 - Math.random());
+                    opponentTeamSlots = shuffled.slice(0, 3);
+                }
 
-            const opponentBattleTeam = opponentTeamSlots.map(initBattlePoke);
-            
-            // 선출 화면으로 전환 (상대 전체 파티 정보 전달)
-            renderSelectionPhase(randomOpponentParty, opponentBattleTeam);
+                const opponentBattleTeam = opponentTeamSlots.map(initBattlePoke);
+                
+                // 선출 화면으로 전환 (상대 전체 파티 정보 전달)
+                renderSelectionPhase(randomOpponentParty, opponentBattleTeam, statusData);
+            } catch (err) {
+                console.error('배틀 시작 오류:', err);
+                alert(`배틀을 시작할 수 없습니다: ${err instanceof Error ? err.message : err}`);
+            }
         };
 
-        const renderSelectionPhase = (opponentFullParty: Party, opponentBattleTeam: BattlePokemon[]) => {
+        const renderSelectionPhase = (opponentFullParty: Party, opponentBattleTeam: BattlePokemon[], statusData: any) => {
             if (!playerParty) return;
 
             let selectedIndices: number[] = [];
@@ -101,7 +121,10 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
                             </div>
                             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
                                 ${opponentFullParty.members.map(slot => {
-                                    const data = fullPokes.find(p => p.id === slot.pokemonId)!;
+                                    const data = fullPokes.find(p => p.id === slot.pokemonId);
+                                    if (!data) {
+                                        return `<div style="text-align:center; padding:8px; border-radius:8px; background:#fff; border:1px solid #eee; font-size:0.7rem; color:red;">알 수 없는 포켓몬<br>(ID: ${slot.pokemonId})</div>`;
+                                    }
                                     return `
                                         <div style="text-align:center; padding:8px; border-radius:8px; background:#fff; border:1px solid #eee;">
                                             <div style="font-weight:bold; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${data.nameKo}</div>
@@ -117,7 +140,10 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
                             <label style="display:block; font-weight:bold; margin-bottom:12px;">내 파티 (6마리 중 3마리 선택)</label>
                             <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
                                 ${playerParty!.members.map((slot, idx) => {
-                                    const data = fullPokes.find(p => p.id === slot.pokemonId)!;
+                                    const data = fullPokes.find(p => p.id === slot.pokemonId);
+                                    if (!data) {
+                                        return `<div style="padding:12px; border-radius:10px; border:2px solid #eee; background:#fff; color:red; font-size:0.8rem;">알 수 없는 포켓몬 (ID: ${slot.pokemonId})</div>`;
+                                    }
                                     const selectOrder = selectedIndices.indexOf(idx);
                                     const isSelected = selectOrder !== -1;
                                     return `
@@ -163,7 +189,8 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
                             opponent: { name: '샌드백 AI', team: opponentBattleTeam, activeIdx: 0 },
                             turn: 1,
                             logs: [{ type: 'info', message: '배틀이 시작되었습니다!' }],
-                            isFinished: false
+                            isFinished: false,
+                            statusData
                         };
                         renderUI();
                     }
@@ -188,6 +215,10 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
                         opponentSide.activeIdx = aliveIdx;
                         const newName = nextPoke.data.nameKo;
                         battleState.logs.push({ type: 'switch', message: `${opponentSide.name}은(는) ${newName}을(를) 내보냈다!` });
+                        
+                        // AI 교체 시 효과 발동
+                        executeEffects(battleState, nextPoke, 'onEntry');
+                        
                         changed = true;
                     }
                 }
@@ -197,6 +228,25 @@ export async function renderBattleAi(container: HTMLElement): Promise<() => void
 
         const handlePlayerAction = (action: BattleAction) => {
             if (!battleState || battleState.isFinished) return;
+
+            const playerActive = battleState.player.team[battleState.player.activeIdx];
+            
+            // 만약 현재 포켓몬이 기절한 상태에서의 교체라면, 턴을 소모하지 않는 '자유 교체'로 처리
+            if (playerActive && playerActive.isFainted && action.type === 'switch') {
+                const nextIdx = action.switchIdx ?? -1;
+                const nextPoke = battleState.player.team[nextIdx];
+                if (nextPoke && !nextPoke.isFainted) {
+                    battleState.player.activeIdx = nextIdx;
+                    const newName = nextPoke.data.nameKo;
+                    battleState.logs.push({ type: 'switch', message: `${battleState.player.name}은(는) ${newName}을(를) 내보냈다!` });
+                    
+                    // 교체 시 효과 발동 (예: 위협 등)
+                    executeEffects(battleState, nextPoke, 'onEntry');
+                    
+                    renderUI();
+                    return;
+                }
+            }
 
             const aiAction = getAiAction(aiLevel, battleState.opponent, battleState.player);
             battleState = executeTurn(battleState, action, aiAction);

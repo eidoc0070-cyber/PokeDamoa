@@ -1,0 +1,52 @@
+{
+  "burn": {
+    "nameKo": "화상",
+    "effectTags": [
+      {
+        "id": "burn_atk_penalty",
+        "trigger": "onDamageCalc",
+        "condition": "move_category == physical",
+        "action": "modify_damage",
+        "params": { "multiplier": 0.5 },
+        "target": "self",
+        "priority": 10,
+        "sourceType": "system"
+      },
+      {
+        "id": "burn_dot",
+        "trigger": "onTurnEnd",
+        "action": "damage",
+        "params": { "percent": 6.25 },
+        "target": "self",
+        "priority": 0,
+        "sourceType": "system"
+      }
+    ]
+  },
+  "paralysis": {
+    "nameKo": "마비",
+    "effectTags": [
+      {
+        "id": "par_spe_penalty",
+        "trigger": "onStatCalc",
+        "action": "modify_stat",
+        "params": { "stat": "spe", "multiplier": 0.5 },
+        "target": "self",
+        "priority": 10,
+        "sourceType": "system"
+      },
+      {
+        "id": "par_prevent",
+        "trigger": "onBeforeMove",
+        "condition": "random <= 25",
+        "action": "prevent_action",
+        "params": { "message": "{name}은(는) 몸이 저려 움직일 수 없다!" },
+        "target": "self",
+        "priority": 0,
+        "sourceType": "system"
+      }
+    ]
+  },
+  "brn": { "alias": "burn" },
+  "par": { "alias": "paralysis" }
+}

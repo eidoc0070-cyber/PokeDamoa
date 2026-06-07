@@ -18,7 +18,10 @@ const createMockPokemon = (id: number, name: string, types: string[], spe: numbe
     ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
     natureId: 0,
     moveIds: [1],
-    isFainted: false
+    isFainted: false,
+    effectTags: [],
+    abilityId: 0,
+    itemId: 0
 });
 
 describe('Battle Engine Integration Tests (Refactored)', () => {
