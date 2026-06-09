@@ -3,6 +3,7 @@ import type { AppState } from '../../state/store.js';
 import { saveSettings, getExternalLinks, DEFAULT_TABS } from '../../state/storage.js';
 import type { TabItem } from '../../state/storage.js';
 import { forceShowPwaBanner } from '../../components/PwaBanner.js';
+import { preloadAllData } from '../../data/pokeapi.js';
 
 export function renderSettings(container: HTMLElement) {
   container.innerHTML = `
@@ -66,7 +67,27 @@ export function renderSettings(container: HTMLElement) {
       </div>
 
       <div style="border-top: 1px solid #eee; padding-top:20px; margin-top:20px;">
-        <h3 style="margin-top:0;">데이터 관리</h3>
+        <h3 style="margin-top:0;">데이터 및 오프라인 관리</h3>
+        
+        <div style="background: rgba(var(--primary-rgb), 0.05); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid rgba(var(--primary-rgb), 0.1);">
+            <p style="margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">🚀 100% 오프라인 모드 준비</p>
+            <p style="margin: 0 0 15px 0; font-size: 0.8rem; color: #666; line-height: 1.4;">
+                모든 포켓몬 데이터와 이미지를 기기에 저장합니다. 완료 후에는 인터넷 없이도 모든 기능을 사용할 수 있습니다. (약 5~10MB)
+            </p>
+            <button id="btn-offline-sync" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 1rem;">
+                모든 데이터 오프라인 저장 시작
+            </button>
+            <div id="sync-progress-container" style="margin-top: 15px; display: none;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.8rem;">
+                    <span id="sync-status">준비 중...</span>
+                    <span id="sync-percent">0%</span>
+                </div>
+                <div style="background: #eee; height: 10px; border-radius: 5px; overflow: hidden;">
+                    <div id="sync-bar" style="background: var(--primary-color); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        </div>
+
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button id="btn-export-settings" style="padding:10px 15px; background:#673ab7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">설정 내보내기</button>
             <button id="btn-import-settings" style="padding:10px 15px; background:#ff9800; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">설정 가져오기</button>
@@ -89,6 +110,12 @@ export function renderSettings(container: HTMLElement) {
   const btnOpenTabManager = container.querySelector<HTMLButtonElement>('#btn-open-tab-manager')!;
   const btnShowPwaGuide = container.querySelector<HTMLButtonElement>('#btn-show-pwa-guide')!;
   
+  const btnOfflineSync = container.querySelector<HTMLButtonElement>('#btn-offline-sync')!;
+  const syncProgressContainer = container.querySelector<HTMLElement>('#sync-progress-container')!;
+  const syncStatus = container.querySelector<HTMLElement>('#sync-status')!;
+  const syncPercent = container.querySelector<HTMLElement>('#sync-percent')!;
+  const syncBar = container.querySelector<HTMLElement>('#sync-bar')!;
+
   const debugDark = container.querySelector<HTMLSpanElement>('#debug-dark')!;
   const debugGen = container.querySelector<HTMLSpanElement>('#debug-gen')!;
   const debugCustom = container.querySelector<HTMLSpanElement>('#debug-custom')!;
@@ -130,6 +157,29 @@ export function renderSettings(container: HTMLElement) {
     const val = (e.target as HTMLSelectElement).value;
     const parsed = isNaN(Number(val)) ? val : Number(val);
     syncAndSave({ generation: parsed as any });
+  });
+
+  // 오프라인 동기화 실행
+  btnOfflineSync.addEventListener('click', async () => {
+    if (!confirm('모든 데이터를 다운로드하시겠습니까? (네트워크 환경에 따라 데이터가 소모될 수 있습니다.)')) return;
+
+    btnOfflineSync.disabled = true;
+    syncProgressContainer.style.display = 'block';
+    
+    try {
+        await preloadAllData((current, total, msg) => {
+            const percent = Math.round((current / total) * 100);
+            syncStatus.textContent = msg;
+            syncPercent.textContent = `${percent}%`;
+            syncBar.style.width = `${percent}%`;
+        });
+        alert('모든 데이터가 성공적으로 저장되었습니다. 이제 오프라인에서도 모든 기능을 사용할 수 있습니다!');
+    } catch (err) {
+        console.error('동기화 실패:', err);
+        alert('데이터 저장 중 오류가 발생했습니다. 네트워크 연결을 확인해 주세요.');
+    } finally {
+        btnOfflineSync.disabled = false;
+    }
   });
 
   // 탭 관리자 모달 열기

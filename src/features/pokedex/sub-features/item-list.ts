@@ -28,7 +28,7 @@ export async function renderItemList(container: HTMLElement): Promise<() => void
 
         const createItemHTML = (i: ItemData) => `
             <div class="item-card" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 12px; align-items: flex-start;">
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${i.nameEn}.png" alt="${i.nameKo}" style="width: 32px; height: 32px; image-rendering: pixelated; background: rgba(0,0,0,0.03); border-radius: 4px;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZWVlIi8+PC9zdmc+'" />
+                <img src="/sprites/items/${i.nameEn}.webp" alt="${i.nameKo}" style="width: 32px; height: 32px; image-rendering: pixelated; background: rgba(0,0,0,0.03); border-radius: 4px;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZWVlIi8+PC9zdmc+'" />
                 <div style="flex: 1;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
                         <span style="font-weight: bold; font-size: 1rem; color: var(--primary-color);">${i.nameKo}</span>

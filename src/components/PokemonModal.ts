@@ -18,7 +18,7 @@ export function renderPokemonModalContent(
 
     return `
         <div style="text-align:center;">
-            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" style="width: 120px; height: 120px; image-rendering:pixelated;" />
+            <img src="/sprites/pokemon/${p.id}.webp" style="width: 120px; height: 120px; image-rendering:pixelated;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWxsPSIjZWVlIi8+PHRleHQgeD0iNDgiIHk9IjUyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk5OSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+';" />
             <h2 style="margin: 0;">${p.nameKo} <span style="font-size:0.6em; color:#888;">#${String(p.dexNumber).padStart(3,'0')}</span></h2>
             <p style="color:#666; font-size: 0.9em; margin-top: 5px;">${p.nameEn.toUpperCase()}</p>
             <div style="margin: 10px 0;">

@@ -57,8 +57,8 @@ export async function openPartySelectorModal(onSelect: (slot: PokemonSlot, party
                             if (!poke) return `<div style="height:60px; background:#f9f9f9; border-radius:8px; border:1px dashed #ddd; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:0.7rem;">비어있음</div>`;
                             return `
                                 <div class="member-slot" data-party-id="${p.id}" data-slot-idx="${idx}" style="cursor:pointer; background:#fff; border:1px solid #eee; border-radius:8px; padding:5px; text-align:center; transition:transform 0.1s;">
-                                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${poke.id}.png" style="width:40px; height:40px; image-rendering:pixelated;" />
-                                    <div style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${poke.nameKo}</div>
+                                   <img src="/sprites/pokemon/${poke.id}.webp" style="width:40px; height:40px; image-rendering:pixelated;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZWVlIi8+PC9zdmc+';" />
+                                   <div style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${poke.nameKo}</div>
                                 </div>
                             `;
                         }).join('')}

@@ -263,3 +263,50 @@ export function getLoadedData() {
         items: cachedItemsData
     };
 }
+
+/**
+ * 모든 데이터를 한꺼번에 미리 불러와 IndexedDB에 저장합니다. (오프라인 동기화용)
+ */
+export async function preloadAllData(onProgress?: (current: number, total: number, msg: string) => void): Promise<void> {
+    const tasks = [
+        { name: '도감 데이터', fn: fetchPokedexData },
+        { name: '기술 데이터', fn: fetchMovesData },
+        { name: '특성 데이터', fn: fetchAbilitiesData },
+        { name: '아이템 데이터', fn: fetchItemsData },
+        { name: '상태이상 데이터', fn: fetchStatusData }
+    ];
+
+    const total = tasks.length;
+    for (const task of tasks) {
+        const i = tasks.indexOf(task);
+        if (onProgress) onProgress(i, total, `${task.name} 로드 중...`);
+        await task.fn();
+    }
+    
+    // 이미지 프리페치 (선택 사항 - 데이터 로드 후 진행)
+    if (onProgress) onProgress(total, total, '이미지 캐싱 준비 중...');
+    
+    const pokedex = await fetchPokedexData();
+    const items = await fetchItemsData();
+    
+    // 프리페치할 이미지 URL 목록 생성
+    const imageUrls = [
+        ...pokedex.map(p => `/sprites/pokemon/${p.id}.webp`),
+        ...items.map(i => `/sprites/items/${i.nameEn}.webp`)
+    ];
+    
+    const imgTotal = imageUrls.length;
+    const CHUNK_SIZE = 50;
+    
+    for (let i = 0; i < imgTotal; i += CHUNK_SIZE) {
+        const chunk = imageUrls.slice(i, i + CHUNK_SIZE);
+        if (onProgress) onProgress(total, total, `이미지 캐싱 중... (${i}/${imgTotal})`);
+        
+        await Promise.all(chunk.map(url => 
+            fetch(url, { mode: 'no-cors', cache: 'force-cache' })
+                .catch(() => {/* 무시 */})
+        ));
+    }
+
+    if (onProgress) onProgress(total, total, '동기화 완료!');
+}

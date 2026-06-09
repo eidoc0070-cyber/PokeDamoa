@@ -82,7 +82,7 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                             <div id="poke-autocomplete-container" style="flex:1;"></div>
                             ${selectedPoke ? `
                                 <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-                                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${selectedPoke.id}.png" style="width:52px; height:52px; image-rendering:pixelated; background:#f5f5f5; border-radius:8px; border:1px solid #eee;" />
+                                    <img src="/sprites/pokemon/${selectedPoke.id}.webp" style="width:52px; height:52px; image-rendering:pixelated; background:#f5f5f5; border-radius:8px; border:1px solid #eee;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MiIgaGVpZ2h0PSI1MiI+PHJlY3Qgd2lkdGg9IjUyIiBoZWlnaHQ9IjUyIiBmaWxsPSIjZWVlIi8+PC9zdmc+';" />
                                     <div style="display:flex; gap:2px;">
                                         ${selectedPoke.types.map(t => `<span style="padding: 1px 4px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.6rem;">${TYPE_NAMES_KO[t]}</span>`).join('')}
                                     </div>

@@ -13,7 +13,7 @@ export function createPokemonCard(p: PokemonData): string {
         <div class="poke-card" data-poke-id="${p.id}" style="background: var(--card-bg, #fff); border-radius: 12px; padding: 12px; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s;">
             <div style="font-size: 0.8em; color: #888; font-weight: bold;">#${String(p.dexNumber).padStart(3, '0')}</div>
             <div class="skeleton" style="width: 96px; height: 96px; border-radius: 8px; margin: 0 0 -8px -10px;">
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" 
+                <img src="/sprites/pokemon/${p.id}.webp" 
                      alt="${p.nameKo}" 
                      loading="lazy" 
                      style="width: 96px; height: 96px; image-rendering: pixelated; display: block;" 
