@@ -284,7 +284,24 @@ export async function preloadAllData(onProgress?: (current: number, total: numbe
     }
     
     // 이미지 프리페치 (선택 사항 - 데이터 로드 후 진행)
-    if (onProgress) onProgress(total, total, '이미지 캐싱 준비 중...');
+    if (onProgress) onProgress(total, total, '데이터 로드 완료! 이미지 및 핵심 리소스 캐싱 중...');
+
+    // 핵심 리소스 캐싱 (Service Worker가 가로채서 캐시함)
+    const scripts = Array.from(document.scripts).map(s => s.src).filter(src => src && src.startsWith(window.location.origin));
+    const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((l: any) => l.href).filter(href => href && href.startsWith(window.location.origin));
+    const coreResources = [
+        '/', 
+        '/index.html', 
+        '/manifest.json', 
+        '/favicon.ico',
+        '/icons/icon-192x192.png',
+        '/icons/icon-512x512.png',
+        '/apple-touch-icon.png',
+        '/og-image.jpg',
+        ...scripts, 
+        ...links
+    ];
+    await Promise.all(coreResources.map(url => fetch(url).catch(() => {})));
     
     const pokedex = await fetchPokedexData();
     const items = await fetchItemsData();
