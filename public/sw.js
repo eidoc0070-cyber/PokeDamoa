@@ -77,7 +77,14 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
           
-          // 캐시에도 없는 경우, TypeError 방지를 위해 반드시 Response 객체 반환
+          // 캐시에도 없는 경우 처리
+          
+          // 외부 폰트(Google Fonts) 요청인 경우 콘솔 에러 방지를 위해 빈 응답 반환
+          if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
+            return new Response('', { status: 200, statusText: 'OK' });
+          }
+
+          // TypeError 방지를 위해 반드시 Response 객체 반환
           if (event.request.mode === 'navigate') {
             return caches.match('/').then((rootResponse) => {
               return rootResponse || new Response('Offline - No Cache Available', { 
