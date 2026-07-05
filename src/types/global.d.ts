@@ -5,6 +5,7 @@ import { PokemonData, MoveData, AbilityData, ItemData } from '../data/pokeapi';
 
 declare global {
   interface Window {
+    deferredPrompt?: any;
     PokeApp: {
       store: Store<AppState>;
       math: typeof PokemonMath;

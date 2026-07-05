@@ -15,7 +15,7 @@ describe("도감 데이터 및 환경 설정 테스트", () => {
     });
 
     test("생성된 JSON 데이터 파일들이 존재하는가", () => {
-        const publicPath = path.resolve(__dirname, "../../public");
+        const publicPath = path.resolve(__dirname, "../../public/data");
         const files = [
             "pokedex-data.json",
             "moves-data.json",
@@ -30,7 +30,7 @@ describe("도감 데이터 및 환경 설정 테스트", () => {
     });
 
     test("데이터 파일의 기본 구조가 유효한가", () => {
-        const publicPath = path.resolve(__dirname, "../../public");
+        const publicPath = path.resolve(__dirname, "../../public/data");
         
         // 기술 데이터 확인
         const movesPath = path.join(publicPath, "moves-data.json");

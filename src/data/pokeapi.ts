@@ -131,8 +131,8 @@ export async function fetchPokedexData(): Promise<PokemonData[]> {
     if (cachedData) return cachedData;
     try {
         const isMatch = await getIsVersionMatch();
-        const baseData = await smartFetch<PokemonData>('pokedex_data', '/pokedex-data.json', isMatch);
-        const customData = await fetchCustomData<PokemonData>('/custom-pokedex.json');
+        const baseData = await smartFetch<PokemonData>('pokedex_data', '/data/pokedex-data.json', isMatch);
+        const customData = await fetchCustomData<PokemonData>('/data/custom-pokedex.json');
         
         // 커스텀 데이터가 우선순위를 가짐 (ID 충돌 시 커스텀 데이터로 덮어쓰기)
         const combined = [...baseData];
@@ -160,8 +160,8 @@ export async function fetchMovesData(): Promise<MoveData[]> {
     if (cachedMovesData) return cachedMovesData;
     try {
         const isMatch = await getIsVersionMatch();
-        const baseData = await smartFetch<MoveData>('moves_data', '/moves-data.json', isMatch);
-        const customData = await fetchCustomData<MoveData>('/custom-moves.json');
+        const baseData = await smartFetch<MoveData>('moves_data', '/data/moves-data.json', isMatch);
+        const customData = await fetchCustomData<MoveData>('/data/custom-moves.json');
 
         const combined = [...baseData];
         customData.forEach(custom => {
@@ -188,8 +188,8 @@ export async function fetchAbilitiesData(): Promise<AbilityData[]> {
     if (cachedAbilitiesData) return cachedAbilitiesData;
     try {
         const isMatch = await getIsVersionMatch();
-        const baseData = await smartFetch<AbilityData>('abilities_data', '/abilities-data.json', isMatch);
-        const customData = await fetchCustomData<AbilityData>('/custom-abilities.json');
+        const baseData = await smartFetch<AbilityData>('abilities_data', '/data/abilities-data.json', isMatch);
+        const customData = await fetchCustomData<AbilityData>('/data/custom-abilities.json');
 
         const combined = [...baseData];
         customData.forEach(custom => {
@@ -216,8 +216,8 @@ export async function fetchItemsData(): Promise<ItemData[]> {
     if (cachedItemsData) return cachedItemsData;
     try {
         const isMatch = await getIsVersionMatch();
-        const baseData = await smartFetch<ItemData>('items_data', '/items-data.json', isMatch);
-        const customData = await fetchCustomData<ItemData>('/custom-items.json');
+        const baseData = await smartFetch<ItemData>('items_data', '/data/items-data.json', isMatch);
+        const customData = await fetchCustomData<ItemData>('/data/custom-items.json');
 
         const combined = [...baseData];
         customData.forEach(custom => {
@@ -243,7 +243,7 @@ export async function fetchItemsData(): Promise<ItemData[]> {
 export async function fetchStatusData(): Promise<any> {
     if (cachedStatusData) return cachedStatusData;
     try {
-        const response = await fetch('/statuses-data.json');
+        const response = await fetch('/data/statuses-data.json');
         if (!response.ok) return {};
         cachedStatusData = await response.json();
         return cachedStatusData;
@@ -293,7 +293,7 @@ export async function preloadAllData(onProgress?: (current: number, total: numbe
         '/', 
         '/index.html', 
         '/manifest.json', 
-        '/favicon.ico',
+        '/icons/favicon.ico',
         '/icons/icon-192x192.png',
         '/icons/icon-512x512.png',
         '/apple-touch-icon.png',

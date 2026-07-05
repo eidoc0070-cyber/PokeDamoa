@@ -60,6 +60,9 @@ export function renderSettings(container: HTMLElement) {
             <button id="btn-open-tab-manager" class="btn btn-primary" style="width: 100%;">
                 하단 탭 설정 관리자 열기
             </button>
+            <button id="btn-install-pwa-direct" class="btn" style="width: 100%; display: none; background: #4caf50; color: #fff; border: none; font-weight: bold; padding: 12px; font-size: 1rem; border-radius: 8px; cursor: pointer;">
+                📲 즉시 앱으로 설치하기
+            </button>
             <button id="btn-show-pwa-guide" class="btn" style="width: 100%;">
                 PWA 앱 설치 안내
             </button>
@@ -109,6 +112,7 @@ export function renderSettings(container: HTMLElement) {
   const btnImport = container.querySelector<HTMLButtonElement>('#btn-import-settings')!;
   const btnOpenTabManager = container.querySelector<HTMLButtonElement>('#btn-open-tab-manager')!;
   const btnShowPwaGuide = container.querySelector<HTMLButtonElement>('#btn-show-pwa-guide')!;
+  const btnInstallPwaDirect = container.querySelector<HTMLButtonElement>('#btn-install-pwa-direct')!;
   
   const btnOfflineSync = container.querySelector<HTMLButtonElement>('#btn-offline-sync')!;
   const syncProgressContainer = container.querySelector<HTMLElement>('#sync-progress-container')!;
@@ -190,6 +194,35 @@ export function renderSettings(container: HTMLElement) {
   // PWA 안내 가이드 표시
   btnShowPwaGuide.addEventListener('click', () => {
     forceShowPwaBanner();
+  });
+
+  const updatePwaButtons = () => {
+    if (window.deferredPrompt) {
+      btnInstallPwaDirect.style.display = 'block';
+    } else {
+      btnInstallPwaDirect.style.display = 'none';
+    }
+  };
+
+  updatePwaButtons();
+
+  window.addEventListener('pwa-installable', updatePwaButtons);
+  window.addEventListener('pwa-installed', updatePwaButtons);
+
+  btnInstallPwaDirect.addEventListener('click', async () => {
+    const deferredPrompt = window.deferredPrompt;
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA 설치 결정: ${outcome}`);
+      } catch (err) {
+        console.error('PWA 설치 오류:', err);
+      } finally {
+        window.deferredPrompt = null;
+        updatePwaButtons();
+      }
+    }
   });
 
   // 내보내기 / 가져오기
@@ -413,5 +446,7 @@ export function renderSettings(container: HTMLElement) {
   // 컴포넌트 파기 시 구독을 해제하도록 클린업 함수를 반환합니다.
   return () => {
     unsubscribe();
+    window.removeEventListener('pwa-installable', updatePwaButtons);
+    window.removeEventListener('pwa-installed', updatePwaButtons);
   };
 }

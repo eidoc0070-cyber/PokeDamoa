@@ -7,10 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DEFAULT_CSV_DIR = path.resolve(__dirname, '../data-source/pokeapi/pokeapi-master/data/v2/csv');
-const DEFAULT_OUTPUT_FILE = path.resolve(__dirname, '../public/pokedex-data.json');
-const DEFAULT_MOVES_OUTPUT_FILE = path.resolve(__dirname, '../public/moves-data.json');
-const DEFAULT_ABILITIES_OUTPUT_FILE = path.resolve(__dirname, '../public/abilities-data.json');
-const DEFAULT_ITEMS_OUTPUT_FILE = path.resolve(__dirname, '../public/items-data.json');
+const DEFAULT_OUTPUT_FILE = path.resolve(__dirname, '../public/data/pokedex-data.json');
+const DEFAULT_MOVES_OUTPUT_FILE = path.resolve(__dirname, '../public/data/moves-data.json');
+const DEFAULT_ABILITIES_OUTPUT_FILE = path.resolve(__dirname, '../public/data/abilities-data.json');
+const DEFAULT_ITEMS_OUTPUT_FILE = path.resolve(__dirname, '../public/data/items-data.json');
 
 function parseCSV(csvDir: string, filename: string) {
   const filePath = path.join(csvDir, filename);

@@ -20,6 +20,25 @@ if (rootElement) {
   console.error("Root element #app not found!");
 }
 
+// PWA 설치 프로모션 지원을 위한 beforeinstallprompt 이벤트 처리
+window.addEventListener('beforeinstallprompt', (e) => {
+  // 브라우저의 기본 설치 배너/다이얼로그 노출 방지
+  e.preventDefault();
+  // 이벤트를 저장해 두었다가 나중에 트리거할 때 사용
+  window.deferredPrompt = e;
+  
+  // 상태 변경 알림 이벤트 발생 (UI 컴포넌트가 감지할 수 있도록)
+  window.dispatchEvent(new CustomEvent('pwa-installable'));
+  console.log('PWA 설치 준비 완료 (beforeinstallprompt 이벤트 감지됨)');
+});
+
+window.addEventListener('appinstalled', () => {
+  // 설치가 완료되면 저장해둔 프로프트 초기화
+  window.deferredPrompt = null;
+  window.dispatchEvent(new CustomEvent('pwa-installed'));
+  console.log('PWA가 성공적으로 설치되었습니다.');
+});
+
 // 서비스 워커 등록 (PWA 및 오프라인 지원)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {

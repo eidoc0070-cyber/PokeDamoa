@@ -46,11 +46,11 @@ describe("오프라인 동기화(Offline Sync) 통합 테스트", () => {
 
         // 1. 필요한 모든 데이터 파일들이 fetch 되었는지 확인
         const fetchedUrls = mockFetch.mock.calls.map(call => call[0] as string);
-        expect(fetchedUrls).toContain('/pokedex-data.json');
-        expect(fetchedUrls).toContain('/moves-data.json');
-        expect(fetchedUrls).toContain('/abilities-data.json');
-        expect(fetchedUrls).toContain('/items-data.json');
-        expect(fetchedUrls).toContain('/statuses-data.json');
+        expect(fetchedUrls).toContain('/data/pokedex-data.json');
+        expect(fetchedUrls).toContain('/data/moves-data.json');
+        expect(fetchedUrls).toContain('/data/abilities-data.json');
+        expect(fetchedUrls).toContain('/data/items-data.json');
+        expect(fetchedUrls).toContain('/data/statuses-data.json');
 
         // 2. IndexedDB(Mock)에 데이터가 저장되었는지 확인
         expect(mockDb).toHaveProperty('pokedex_data');

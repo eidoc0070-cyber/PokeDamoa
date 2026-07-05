@@ -4,7 +4,7 @@ const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
   '/version.json',
-  '/favicon.ico'
+  '/icons/favicon.ico'
 ];
 
 // 설치 시 기본 정적 자원 캐싱

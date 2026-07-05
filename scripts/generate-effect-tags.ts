@@ -7,9 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const CSV_DIR = path.resolve(__dirname, '../data-source/pokeapi/pokeapi-master/data/v2/csv');
-const ABILITIES_PATH = path.resolve(__dirname, '../public/abilities-data.json');
-const MOVES_PATH = path.resolve(__dirname, '../public/moves-data.json');
-const ITEMS_PATH = path.resolve(__dirname, '../public/items-data.json');
+const ABILITIES_PATH = path.resolve(__dirname, '../public/data/abilities-data.json');
+const MOVES_PATH = path.resolve(__dirname, '../public/data/moves-data.json');
+const ITEMS_PATH = path.resolve(__dirname, '../public/data/items-data.json');
 
 function parseCSV(filename: string) {
     const filePath = path.join(CSV_DIR, filename);

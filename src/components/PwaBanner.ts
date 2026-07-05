@@ -4,21 +4,41 @@ import { getBrowserInfo, getInstallInstructions, shareToOpenExternal } from '../
 import type { BrowserType } from '../utils/pwa.js';
 
 export function initPwaBanner(container: HTMLElement) {
-    const { type, name, isMobile, isPWA, isIOS, isInApp } = getBrowserInfo();
-    const state = globalStore.getState();
+    const checkAndShow = () => {
+        const { type, name, isMobile, isPWA, isIOS, isInApp } = getBrowserInfo();
+        const state = globalStore.getState();
 
-    // 팝업 표시 조건 체크:
-    // 1. iOS인데 Safari가 아니거나, 2. 인앱 브라우저(카톡, 인스타 등)이거나, 3. 일반 방문 2회 이상 시
-    const isSpecialCase = (isIOS && type !== 'Safari') || isInApp;
-    const shouldShow = (isSpecialCase || state.visitCount >= 2) && isMobile && !isPWA && !state.pwaGuideDismissed;
+        const hasDirectInstall = !!window.deferredPrompt;
+        const isSpecialCase = (isIOS && type !== 'Safari') || isInApp;
+        const shouldShow = (hasDirectInstall || isSpecialCase || state.visitCount >= 2) && isMobile && !isPWA && !state.pwaGuideDismissed;
 
-    if (!shouldShow) return;
+        if (!shouldShow) return;
 
-    renderBanner(container, type, name);
+        renderBanner(container, type, name);
+    };
+
+    checkAndShow();
+    window.addEventListener('pwa-installable', checkAndShow);
 }
 
 export function forceShowPwaBanner() {
     renderPwaModal();
+}
+
+async function triggerDirectInstall() {
+    const deferredPrompt = window.deferredPrompt;
+    if (!deferredPrompt) return;
+
+    try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA 설치 결정: ${outcome}`);
+    } catch (err) {
+        console.error('PWA 설치 오류:', err);
+    } finally {
+        window.deferredPrompt = null;
+        window.dispatchEvent(new CustomEvent('pwa-installed'));
+    }
 }
 
 function renderBanner(container: HTMLElement, detectedType: BrowserType, detectedName: string) {
@@ -57,7 +77,9 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     `;
 
     const text = document.createElement('div');
-    if (isIOS && type !== 'Safari') {
+    if (window.deferredPrompt) {
+        text.innerHTML = `<strong>앱으로 즉시 설치 가능!</strong> <br><small>화면을 홈 화면에 추가하여 앱으로 이용해 보세요.</small>`;
+    } else if (isIOS && type !== 'Safari') {
         text.innerHTML = `<strong>아이폰</strong>은 <strong>Safari</strong>에서만 앱 설치가 가능합니다. <br><small>Safari로 이동하여 설치하시겠습니까?</small>`;
     } else if (isInApp) {
         text.innerHTML = `<strong>인앱 브라우저</strong>에서는 설치가 불가능합니다. <br><small>외부 브라우저로 이동하여 설치해 보세요.</small>`;
@@ -85,14 +107,7 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         justify-content: flex-end;
     `;
 
-    // 1. 외부 브라우저 이동 버튼
-    const targetBrowserName = isIOS ? 'Safari' : '외부 브라우저';
-    const btnGoExternal = createButton(`${targetBrowserName}로 이동`, '#333', '#fff');
-    
-    // 2. 설치 방법 보기 버튼
-    const btnShowGuide = createButton('설치 방법 보기', 'rgba(255,255,255,0.6)', '#333', true);
-    
-    // 3. 닫기 버튼 (X)
+    // 닫기 버튼 (X)
     const btnClose = document.createElement('button');
     btnClose.innerHTML = '&times;';
     btnClose.style.cssText = `
@@ -105,13 +120,59 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         line-height: 0.8;
     `;
 
+    let closeBanner = (permanently = true) => {};
+
+    if (window.deferredPrompt) {
+        const btnInstallDirect = createButton('앱 바로 설치', '#4caf50', '#fff');
+        const btnLater = createButton('나중에', 'rgba(255,255,255,0.6)', '#333', true);
+        
+        btnInstallDirect.onclick = async () => {
+            await triggerDirectInstall();
+            closeBanner(true);
+        };
+        
+        btnLater.onclick = () => {
+            closeBanner(true);
+        };
+
+        buttons.appendChild(btnLater);
+        buttons.appendChild(btnInstallDirect);
+    } else {
+        const targetBrowserName = isIOS ? 'Safari' : '외부 브라우저';
+        const btnGoExternal = createButton(`${targetBrowserName}로 이동`, '#333', '#fff');
+        const btnShowGuide = createButton('설치 방법 보기', 'rgba(255,255,255,0.6)', '#333', true);
+
+        // 외부 브라우저 이동 로직
+        btnGoExternal.onclick = async () => {
+            const result = await shareToOpenExternal();
+            statusMessage.style.display = 'block';
+            
+            if (result === 'shared') {
+                statusMessage.textContent = `↗ 공유창에서 ${targetBrowserName}를 선택하세요!`;
+                statusMessage.style.color = '#0056b3';
+            } else if (result === 'copied') {
+                statusMessage.textContent = '✓ 주소 복사 완료! 브라우저에 붙여넣어 주세요.';
+                statusMessage.style.color = '#1e7e34';
+                setTimeout(() => closeBanner(true), 3000);
+            } else if (result === 'cancelled') {
+                statusMessage.style.display = 'none';
+            }
+        };
+
+        // 가이드 모달 띄우기
+        btnShowGuide.onclick = () => {
+            closeBanner(true);
+            renderPwaModal(isIOS ? 'Safari' : detectedType);
+        };
+
+        buttons.appendChild(btnShowGuide);
+        buttons.appendChild(btnGoExternal);
+    }
+
     text.appendChild(timerDisplay);
     text.appendChild(statusMessage);
     content.appendChild(text);
     content.appendChild(btnClose);
-    
-    buttons.appendChild(btnShowGuide);
-    buttons.appendChild(btnGoExternal);
     
     banner.appendChild(content);
     banner.appendChild(buttons);
@@ -122,7 +183,7 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         banner.style.transform = 'translateY(0)';
     }, 100);
 
-    let timeLeft = 20; // 안내 배너는 조금 더 길게 유지
+    let timeLeft = 20;
     const updateTimer = () => {
         timerDisplay.textContent = `${timeLeft}초 후 자동 닫힘`;
     };
@@ -137,7 +198,7 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
         }
     }, 1000);
 
-    const closeBanner = (permanently = true) => {
+    closeBanner = (permanently = true) => {
         clearInterval(timerInterval);
         banner.style.transform = 'translateY(-100%)';
         setTimeout(() => {
@@ -152,29 +213,6 @@ function renderBanner(container: HTMLElement, detectedType: BrowserType, detecte
     };
 
     btnClose.onclick = () => closeBanner(true);
-
-    // 외부 브라우저 이동 로직
-    btnGoExternal.onclick = async () => {
-        const result = await shareToOpenExternal();
-        statusMessage.style.display = 'block';
-        
-        if (result === 'shared') {
-            statusMessage.textContent = `↗ 공유창에서 ${targetBrowserName}를 선택하세요!`;
-            statusMessage.style.color = '#0056b3';
-        } else if (result === 'copied') {
-            statusMessage.textContent = '✓ 주소 복사 완료! 브라우저에 붙여넣어 주세요.';
-            statusMessage.style.color = '#1e7e34';
-            setTimeout(() => closeBanner(true), 3000);
-        } else if (result === 'cancelled') {
-            statusMessage.style.display = 'none';
-        }
-    };
-
-    // 가이드 모달 띄우기
-    btnShowGuide.onclick = () => {
-        closeBanner(true);
-        renderPwaModal(isIOS ? 'Safari' : detectedType);
-    };
 }
 
 function createButton(text: string, bg: string, color: string, isOutline = false) {
@@ -250,7 +288,18 @@ export function renderPwaModal(initialType?: BrowserType) {
                 <h2 style="margin:0; font-size:1.4rem; letter-spacing:-0.5px;">PWA 설치 안내</h2>
                 <button id="pwa-modal-close" style="background:none; border:none; font-size:2rem; cursor:pointer; color:inherit; line-height:0.5;">&times;</button>
             </div>
-            <p style="margin:0; font-size:0.95rem; color:#666; line-height:1.5;">
+            ${window.deferredPrompt ? `
+                <div id="direct-install-box" style="background: linear-gradient(135deg, #4caf50, #81c784); color: white; padding: 18px; border-radius: 14px; margin-top: 5px; box-shadow: 0 4px 10px rgba(76, 175, 80, 0.2); text-align: left;">
+                    <p style="margin:0 0 10px 0; font-weight:bold; font-size:1.05rem;">🎉 즉시 설치 가능</p>
+                    <p style="margin:0 0 15px 0; font-size:0.85rem; line-height:1.4; opacity:0.9;">
+                        현재 사용 중인 브라우저는 원클릭 바로 설치를 지원합니다. 아래 버튼을 눌러 홈 화면에 바로 추가해 보세요!
+                    </p>
+                    <button id="btn-modal-install-direct" style="width:100%; padding:12px; border-radius:10px; border:none; background:#ffffff; color:#2e7d32; font-weight:bold; cursor:pointer; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <span>📲 원클릭 앱 설치하기</span>
+                    </button>
+                </div>
+            ` : ''}
+            <p style="margin:0; font-size:0.95rem; color:#666; line-height:1.5; ${window.deferredPrompt ? 'margin-top:15px;' : ''}">
                 ${isInApp ? '카카오톡/인스타그램 같은 <strong>인앱 브라우저</strong>에서는 설치가 불가능합니다.' : (isIOS ? '아이폰은 <strong>Safari</strong>를 이용해야 앱 설치가 가능합니다.' : '브라우저를 선택하여 설치 방법을 확인하세요.')}
             </p>
             <div style="display:flex; flex-direction:column; gap:12px; margin-top:5px;">
@@ -280,6 +329,14 @@ export function renderPwaModal(initialType?: BrowserType) {
         `;
 
         modal.querySelector('#pwa-modal-close')?.addEventListener('click', closePwaModal);
+
+        if (window.deferredPrompt) {
+            modal.querySelector('#btn-modal-install-direct')?.addEventListener('click', async () => {
+                await triggerDirectInstall();
+                closePwaModal();
+            });
+        }
+
         modal.querySelectorAll('.browser-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const type = (e.currentTarget as HTMLElement).dataset.type as BrowserType;
