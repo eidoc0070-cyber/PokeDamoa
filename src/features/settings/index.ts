@@ -165,19 +165,30 @@ export function renderSettings(container: HTMLElement) {
 
   // 오프라인 동기화 실행
   btnOfflineSync.addEventListener('click', async () => {
-    if (!confirm('모든 데이터를 다운로드하시겠습니까? (네트워크 환경에 따라 데이터가 소모될 수 있습니다.)')) return;
+    const currentTabs = globalStore.getState().tabs;
+    const hiddenTabs = currentTabs.filter(t => !t.isVisible && t.id !== 'settings');
+
+    // 비활성 탭이 있으면 건너뜀 안내 문구를 확인창에 포함
+    const skipNote = hiddenTabs.length > 0
+      ? `\n\n⚡ 현재 비활성화된 탭(${hiddenTabs.map(t => t.currentName).join(', ')})의 전용 데이터는 건너뛰어 용량을 절약합니다.`
+      : '';
+
+    if (!confirm(`활성화된 탭에 필요한 데이터를 다운로드합니다. (네트워크 환경에 따라 데이터가 소모될 수 있습니다.)${skipNote}`)) return;
 
     btnOfflineSync.disabled = true;
     syncProgressContainer.style.display = 'block';
     
     try {
-        await preloadAllData((current, total, msg) => {
-            const percent = Math.round((current / total) * 100);
-            syncStatus.textContent = msg;
-            syncPercent.textContent = `${percent}%`;
-            syncBar.style.width = `${percent}%`;
-        });
-        alert('모든 데이터가 성공적으로 저장되었습니다. 이제 오프라인에서도 모든 기능을 사용할 수 있습니다!');
+        await preloadAllData(
+            (current, total, msg) => {
+                const percent = Math.round((current / total) * 100);
+                syncStatus.textContent = msg;
+                syncPercent.textContent = `${percent}%`;
+                syncBar.style.width = `${percent}%`;
+            },
+            currentTabs  // ← 탭 상태를 넘겨 불필요한 데이터는 건너뜀
+        );
+        alert('데이터가 성공적으로 저장되었습니다. 이제 오프라인에서도 모든 기능을 사용할 수 있습니다!');
     } catch (err) {
         console.error('동기화 실패:', err);
         alert('데이터 저장 중 오류가 발생했습니다. 네트워크 연결을 확인해 주세요.');
