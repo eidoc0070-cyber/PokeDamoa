@@ -8,15 +8,20 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "bun test",
+    "lint": "biome lint src/ tests/",
+    "format": "biome format --write src/ tests/",
+    "security": "bunx bun-osv-scanner",
     "build:data": "bun scripts/build-data.ts",
     "build:sprites": "bun scripts/update-sprites.ts"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
     "@happy-dom/global-registrator": "^20.10.0",
     "@types/bun": "^1.3.14",
+    "bun-osv-scanner": "^2.0.0",
     "happy-dom": "^20.10.0",
     "sharp": "^0.34.5",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.0.16"
   }
 }
