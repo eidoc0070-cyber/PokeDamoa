@@ -99,17 +99,31 @@ async function checkVersion(): Promise<boolean> {
 
 async function smartFetch<T>(key: string, url: string, isVersionMatch: boolean): Promise<T[]> {
     if (isVersionMatch) {
-        const localData = await getFromDB<T[]>(key);
-        if (localData) return localData;
+        try {
+            const localData = await getFromDB<T[]>(key);
+            if (localData && Array.isArray(localData) && localData.length > 0) return localData;
+        } catch (e) {
+            console.warn(`[smartFetch] IndexedDB 읽기 실패 (${key}):`, e);
+        }
     }
 
     try {
         const response = await fetch(url);
         if (!response.ok) return [];
         const data = await response.json();
-        await saveToDB(key, data);
+        try {
+            await saveToDB(key, data);
+        } catch (e) {
+            console.warn(`[smartFetch] IndexedDB 저장 실패 (${key}):`, e);
+        }
         return data;
-    } catch {
+    } catch (e) {
+        console.error(`[smartFetch] 네트워크 요청 실패 (${url}):`, e);
+        // IndexedDB 캐시라도 남아있다면 네트워크 실패 시 마지막 보루로 반환
+        try {
+            const fallbackData = await getFromDB<T[]>(key);
+            if (fallbackData && Array.isArray(fallbackData)) return fallbackData;
+        } catch {}
         return [];
     }
 }
