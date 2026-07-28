@@ -1,31 +1,34 @@
-import type { PokemonSlot } from '../party-builder/types.js';
-import type { PokemonData, MoveData } from '../../data/pokeapi.js';
+import type { MoveData, PokemonData } from "../../data/pokeapi.js";
+import type { PokemonSlot } from "../party-builder/types.js";
 
-export type AILevel = 'beginner' | 'normal' | 'expert';
+export type AILevel = "beginner" | "normal" | "expert";
 
-export type EventHook = 
-    | 'onEntry' 
-    | 'onBeforeMove' 
-    | 'onDamageCalc' 
-    | 'onAfterMove' 
-    | 'onTurnEnd' 
-    | 'onFaint' 
-    | 'onSwitchOut'
-    | 'onStatCalc';
+export type EventHook =
+    | "onEntry"
+    | "onBeforeMove"
+    | "onDamageCalc"
+    | "onAfterMove"
+    | "onTurnEnd"
+    | "onFaint"
+    | "onSwitchOut"
+    | "onStatCalc";
 
-export type TargetType = 'self' | 'opponent' | 'ally' | 'field' | 'side' | 'all';
+export type TargetType = "self" | "opponent" | "ally" | "field" | "side" | "all";
 
-export type EffectAction = 
-    | 'modify_rank' 
-    | 'modify_stat' 
-    | 'modify_damage' 
-    | 'apply_status' 
-    | 'heal' 
-    | 'damage'
-    | 'set_weather'
-    | 'set_field'
-    | 'prevent_action'
-    | 'custom';
+export type EffectAction =
+    | "modify_rank"
+    | "modify_stat"
+    | "modify_damage"
+    | "apply_status"
+    | "cure_status"
+    | "heal"
+    | "damage"
+    | "drain"
+    | "recoil"
+    | "set_weather"
+    | "set_field"
+    | "prevent_action"
+    | "custom";
 
 export interface EffectTag {
     id: string;
@@ -35,7 +38,7 @@ export interface EffectTag {
     params: any;
     target: TargetType;
     priority: number;
-    sourceType: 'ability' | 'item' | 'move' | 'system';
+    sourceType: "ability" | "item" | "move" | "system";
 }
 
 export interface BattleStats {
@@ -76,7 +79,7 @@ export interface BattleSide {
 }
 
 export interface BattleLog {
-    type: 'info' | 'damage' | 'faint' | 'switch' | 'win' | 'effect';
+    type: "info" | "damage" | "faint" | "switch" | "win" | "effect";
     message: string;
 }
 
@@ -93,13 +96,13 @@ export interface BattleState {
     field?: string;
     logs: BattleLog[];
     isFinished: boolean;
-    winner?: 'player' | 'opponent';
+    winner?: "player" | "opponent";
     statusData?: Record<string, StatusData>; // 전역 상태이상 정의 데이터
 }
 
 export interface BattleAction {
-    type: 'move' | 'switch';
-    side: 'player' | 'opponent';
+    type: "move" | "switch";
+    side: "player" | "opponent";
     moveIdx?: number;
     switchIdx?: number;
 }

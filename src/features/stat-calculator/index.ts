@@ -1,26 +1,53 @@
-import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
-import type { PokemonData, MoveData } from '../../data/pokeapi.js';
-import { TYPE_COLORS, TYPE_NAMES_KO, NATURES } from '../../data/constants.js';
-import { calculateStat, calculateBulk, calculatePower, getStatsForGen, getTypesForGen, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from '../../utils/pokemon-math.js';
-import { createAutocomplete } from '../../components/SearchAutocomplete.js';
-import { renderStatInputCard } from '../../components/StatInputCard.js'; // 모듈화된 카드 UI
-import { globalStore } from '../../state/store.js';
-import { openPartySelectorModal } from '../party-builder/sub-components/PartySelectorModal.js';
+import { createAutocomplete } from "../../components/SearchAutocomplete.js";
+import { renderStatInputCard } from "../../components/StatInputCard.js"; // 모듈화된 카드 UI
+import { NATURES, TYPE_COLORS, TYPE_NAMES_KO } from "../../data/constants.js";
+import type { MoveData, PokemonData } from "../../data/pokeapi.js";
+import { fetchMovesData, fetchPokedexData } from "../../data/pokeapi.js";
+import { globalStore } from "../../state/store.js";
+import {
+    calculateBulk,
+    calculatePower,
+    calculateStat,
+    getMoveItemStyle,
+    getSortedMovesForPoke,
+    getStatsForGen,
+    renderMoveItemExtra,
+} from "../../utils/pokemon-math.js";
+import { openPartySelectorModal } from "../party-builder/sub-components/PartySelectorModal.js";
 
-const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
-type StatKey = typeof STAT_KEYS[number];
+const STAT_KEYS = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
+type StatKey = (typeof STAT_KEYS)[number];
 
 const STAT_NAMES: Record<StatKey, string> = {
-    hp: 'HP', atk: '공격', def: '방어', spa: '특수공격', spd: '특수방어', spe: '스피드'
+    hp: "HP",
+    atk: "공격",
+    def: "방어",
+    spa: "특수공격",
+    spd: "특수방어",
+    spe: "스피드",
 };
 
 const STAT_COLORS: Record<StatKey, string> = {
-    hp: '#e53935', atk: '#f57c00', def: '#fbc02d', spa: '#1e88e5', spd: '#4caf50', spe: '#e91e63'
+    hp: "#e53935",
+    atk: "#f57c00",
+    def: "#fbc02d",
+    spa: "#1e88e5",
+    spd: "#4caf50",
+    spe: "#e91e63",
 };
 
 // PokeAPI Generation IDs mapping
-const GEN_ID_MAP: Record<number | string, number> = {
-    1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 11, 9: 18, 'champions': 18
+const _GEN_ID_MAP: Record<number | string, number> = {
+    1: 1,
+    2: 2,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 6,
+    7: 7,
+    8: 11,
+    9: 18,
+    champions: 18,
 };
 
 export async function renderStatCalculator(container: HTMLElement): Promise<() => void> {
@@ -28,22 +55,24 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
 
     try {
         const [fullData, movesData] = await Promise.all([fetchPokedexData(), fetchMovesData()]);
-        
-        let selectedPoke: PokemonData | null = fullData.find(p => p.id === 445) || fullData[0] || null;
+
+        let selectedPoke: PokemonData | null = fullData.find((p) => p.id === 445) || fullData[0] || null;
         let selectedMove: MoveData | null = null;
-        let baseStats: Record<StatKey, number> = selectedPoke ? { ...selectedPoke.stats as any } : { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+        let baseStats: Record<StatKey, number> = selectedPoke
+            ? { ...(selectedPoke.stats as any) }
+            : { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
         let level = 50;
         let ivs: Record<StatKey, number> = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
         let evs: Record<StatKey, number> = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
-        let naturePlus: StatKey | 'none' = 'none';
-        let natureMinus: StatKey | 'none' = 'none';
+        let naturePlus: StatKey | "none" = "none";
+        let natureMinus: StatKey | "none" = "none";
 
         let moveAutocomplete: any = null;
 
         const getSortedMoves = () => {
             const gen = globalStore.getState().generation;
-            const targetGen = gen === 'champions' ? 9 : gen as number;
-            return getSortedMovesForPoke(movesData, selectedPoke, targetGen, m => m.category !== 'status');
+            const targetGen = gen === "champions" ? 9 : (gen as number);
+            return getSortedMovesForPoke(movesData, selectedPoke, targetGen, (m) => m.category !== "status");
         };
 
         const calcStat = (key: StatKey) => {
@@ -51,26 +80,26 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
             const iv = ivs[key];
             const ev = evs[key];
             let natureMod = 1.0;
-            if (key !== 'hp') {
+            if (key !== "hp") {
                 if (naturePlus === key && natureMinus !== key) natureMod = 1.1;
                 if (natureMinus === key && naturePlus !== key) natureMod = 0.9;
             }
-            return calculateStat(base, iv, ev, level, key === 'hp', natureMod);
+            return calculateStat(base, iv, ev, level, key === "hp", natureMod);
         };
 
         const renderUI = () => {
             const evTotal = Object.values(evs).reduce((a, b) => a + b, 0);
-            const hpReal = calcStat('hp');
-            const atkReal = calcStat('atk');
-            const defReal = calcStat('def');
-            const spaReal = calcStat('spa');
-            const spdReal = calcStat('spd');
+            const hpReal = calcStat("hp");
+            const atkReal = calcStat("atk");
+            const defReal = calcStat("def");
+            const spaReal = calcStat("spa");
+            const spdReal = calcStat("spd");
             const physBulk = calculateBulk(hpReal, defReal);
             const specBulk = calculateBulk(hpReal, spdReal);
             let powerVal = 0;
             if (selectedMove && selectedPoke) {
                 const stab = selectedPoke.types.includes(selectedMove.type) ? 1.5 : 1.0;
-                const statUsed = selectedMove.category === 'special' ? spaReal : atkReal;
+                const statUsed = selectedMove.category === "special" ? spaReal : atkReal;
                 powerVal = calculatePower(statUsed, selectedMove.power, stab);
             }
 
@@ -80,14 +109,18 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                     <div class="card" style="margin-bottom:0; padding:12px;">
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
                             <div id="poke-autocomplete-container" style="flex:1;"></div>
-                            ${selectedPoke ? `
+                            ${
+                                selectedPoke
+                                    ? `
                                 <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
                                     <img src="/sprites/pokemon/${selectedPoke.id}.webp" style="width:52px; height:52px; image-rendering:pixelated; background:#f5f5f5; border-radius:8px; border:1px solid #eee;" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MiIgaGVpZ2h0PSI1MiI+PHJlY3Qgd2lkdGg9IjUyIiBoZWlnaHQ9IjUyIiBmaWxsPSIjZWVlIi8+PC9zdmc+';" />
                                     <div style="display:flex; gap:2px;">
-                                        ${selectedPoke.types.map(t => `<span style="padding: 1px 4px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.6rem;">${TYPE_NAMES_KO[t]}</span>`).join('')}
+                                        ${selectedPoke.types.map((t) => `<span style="padding: 1px 4px; background: ${TYPE_COLORS[t]}; color:#fff; border-radius:4px; font-size:0.6rem;">${TYPE_NAMES_KO[t]}</span>`).join("")}
                                     </div>
                                 </div>
-                            ` : ''}
+                            `
+                                    : ""
+                            }
                         </div>
 
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
@@ -136,12 +169,23 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                     <div style="background:transparent;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 5px;">
                             <h3 style="margin:0; font-size:1rem; color:var(--text-color);">능력치 세팅</h3>
-                            <span style="font-size:0.8rem; font-weight:bold; padding:2px 10px; border-radius:15px; background:${evTotal > 510 ? '#ffebee' : '#e8f5e9'}; color:${evTotal > 510 ? '#d32f2f' : '#2e7d32'}; border:1px solid ${evTotal > 510 ? '#ffcdd2' : '#c8e6c9'};">노력치: ${evTotal}/510</span>
+                            <span style="font-size:0.8rem; font-weight:bold; padding:2px 10px; border-radius:15px; background:${evTotal > 510 ? "#ffebee" : "#e8f5e9"}; color:${evTotal > 510 ? "#d32f2f" : "#2e7d32"}; border:1px solid ${evTotal > 510 ? "#ffcdd2" : "#c8e6c9"};">노력치: ${evTotal}/510</span>
                         </div>
                         
                         <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                            ${STAT_KEYS.map(key => {
-                                const realVal = key === 'hp' ? hpReal : (key === 'atk' ? atkReal : (key === 'def' ? defReal : (key === 'spa' ? spaReal : (key === 'spd' ? spdReal : calcStat(key)))));
+                            ${STAT_KEYS.map((key) => {
+                                const realVal =
+                                    key === "hp"
+                                        ? hpReal
+                                        : key === "atk"
+                                          ? atkReal
+                                          : key === "def"
+                                            ? defReal
+                                            : key === "spa"
+                                              ? spaReal
+                                              : key === "spd"
+                                                ? spdReal
+                                                : calcStat(key);
                                 return renderStatInputCard({
                                     statKey: key,
                                     statName: STAT_NAMES[key],
@@ -151,9 +195,9 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                                     ev: evs[key],
                                     naturePlus: naturePlus === key,
                                     natureMinus: natureMinus === key,
-                                    realVal
+                                    realVal,
                                 });
-                            }).join('')}
+                            }).join("")}
                         </div>
                     </div>
                 </div>
@@ -188,60 +232,71 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
 
         const attachEvents = () => {
             createAutocomplete({
-                container: container.querySelector('#poke-autocomplete-container')!,
-                label: '포켓몬 검색', placeholder: '이름 입력', data: fullData,
+                container: container.querySelector("#poke-autocomplete-container")!,
+                label: "포켓몬 검색",
+                placeholder: "이름 입력",
+                data: fullData,
                 initialValue: selectedPoke?.nameKo,
-                getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
-                onSelect: p => { 
-                    selectedPoke = p; 
+                getSearchKey: (p) => p.searchKey,
+                getDisplayName: (p) => p.nameKo,
+                getDisplaySub: (p) => `(${p.nameEn})`,
+                onSelect: (p) => {
+                    selectedPoke = p;
                     evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                     ivs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
-                    naturePlus = 'none';
-                    natureMinus = 'none';
-                    
+                    naturePlus = "none";
+                    natureMinus = "none";
+
                     const gen = globalStore.getState().generation;
-                    const targetGen = gen === 'champions' ? 9 : gen as number;
-                    baseStats = { ...getStatsForGen(p, targetGen) as any }; 
+                    const targetGen = gen === "champions" ? 9 : (gen as number);
+                    baseStats = { ...(getStatsForGen(p, targetGen) as any) };
                     if (moveAutocomplete) {
                         moveAutocomplete.setData(getSortedMoves());
                         moveAutocomplete.setOptions({
                             getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
-                            renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                            renderItemExtra: (m: MoveData) =>
+                                renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS),
                         });
                     }
-                    renderUI(); 
-                }
+                    renderUI();
+                },
             });
 
             const gen = globalStore.getState().generation;
-            const targetGen = gen === 'champions' ? 9 : gen as number;
+            const targetGen = gen === "champions" ? 9 : (gen as number);
             moveAutocomplete = createAutocomplete({
-                container: container.querySelector('#move-autocomplete-container')!,
-                label: '기술 검색', placeholder: '이름 입력', 
+                container: container.querySelector("#move-autocomplete-container")!,
+                label: "기술 검색",
+                placeholder: "이름 입력",
                 data: getSortedMoves(),
                 initialValue: selectedMove?.nameKo,
-                getSearchKey: m => m.searchKey, getDisplayName: m => m.nameKo, getDisplaySub: m => `(위력 ${m.power})`,
-                onSelect: m => { selectedMove = m; renderUI(); },
+                getSearchKey: (m) => m.searchKey,
+                getDisplayName: (m) => m.nameKo,
+                getDisplaySub: (m) => `(위력 ${m.power})`,
+                onSelect: (m) => {
+                    selectedMove = m;
+                    renderUI();
+                },
                 getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
-                renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS),
             });
 
-            container.querySelector('#btn-load-party')?.addEventListener('click', () => {
+            container.querySelector("#btn-load-party")?.addEventListener("click", () => {
                 openPartySelectorModal((slot) => {
-                    const poke = fullData.find(p => p.id === slot.pokemonId);
+                    const poke = fullData.find((p) => p.id === slot.pokemonId);
                     if (poke) {
                         selectedPoke = poke;
                         level = slot.level;
                         ivs = { ...slot.ivs };
                         evs = { ...slot.evs };
-                        const nature = NATURES.find(n => n.id === slot.natureId);
-                        naturePlus = nature?.plus || 'none';
-                        natureMinus = nature?.minus || 'none';
-                        
+                        const nature = NATURES.find((n) => n.id === slot.natureId);
+                        naturePlus = nature?.plus || "none";
+                        natureMinus = nature?.minus || "none";
+
                         const gen = globalStore.getState().generation;
-                        const targetGen = gen === 'champions' ? 9 : gen as number;
-                        baseStats = { ...getStatsForGen(poke, targetGen) as any };
-                        
+                        const targetGen = gen === "champions" ? 9 : (gen as number);
+                        baseStats = { ...(getStatsForGen(poke, targetGen) as any) };
+
                         if (moveAutocomplete) {
                             moveAutocomplete.setData(getSortedMoves());
                         }
@@ -250,78 +305,116 @@ export async function renderStatCalculator(container: HTMLElement): Promise<() =
                 });
             });
 
-            container.querySelector('#level-input')?.addEventListener('change', (e) => {
-                level = parseInt((e.target as HTMLInputElement).value) || 50; renderUI();
+            container.querySelector("#level-input")?.addEventListener("change", (e) => {
+                level = parseInt((e.target as HTMLInputElement).value, 10) || 50;
+                renderUI();
             });
 
-            container.querySelectorAll('.btn-preset').forEach(el => el.addEventListener('click', (e) => {
-                const preset = (e.currentTarget as HTMLElement).getAttribute('data-preset');
-                
-                if (preset === 'phys-atk') {
-                    evs.atk = 252;
-                    naturePlus = 'atk'; natureMinus = 'spa';
-                } else if (preset === 'spec-atk') {
-                    evs.spa = 252;
-                    naturePlus = 'spa'; natureMinus = 'atk';
-                } else if (preset === 'phys-def') {
-                    evs.def = 252;
-                    naturePlus = 'def'; natureMinus = 'spa';
-                } else if (preset === 'spec-def') {
-                    evs.spd = 252;
-                    naturePlus = 'spd'; natureMinus = 'atk';
-                }
-                renderUI();
-            }));
+            // biome-ignore lint/suspicious/useIterableCallbackReturn: addEventListener 체이닝 패턴
+            container.querySelectorAll(".btn-preset").forEach((el) =>
+                el.addEventListener("click", (e) => {
+                    const preset = (e.currentTarget as HTMLElement).getAttribute("data-preset");
 
-            container.querySelector('#btn-reset')?.addEventListener('click', () => {
+                    if (preset === "phys-atk") {
+                        evs.atk = 252;
+                        naturePlus = "atk";
+                        natureMinus = "spa";
+                    } else if (preset === "spec-atk") {
+                        evs.spa = 252;
+                        naturePlus = "spa";
+                        natureMinus = "atk";
+                    } else if (preset === "phys-def") {
+                        evs.def = 252;
+                        naturePlus = "def";
+                        natureMinus = "spa";
+                    } else if (preset === "spec-def") {
+                        evs.spd = 252;
+                        naturePlus = "spd";
+                        natureMinus = "atk";
+                    }
+                    renderUI();
+                }),
+            );
+
+            container.querySelector("#btn-reset")?.addEventListener("click", () => {
                 evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 ivs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
-                naturePlus = 'none';
-                natureMinus = 'none';
+                naturePlus = "none";
+                natureMinus = "none";
                 renderUI();
             });
 
-            container.querySelectorAll('.base-stat-input').forEach(el => el.addEventListener('change', (e) => {
-                const s = (e.target as HTMLElement).getAttribute('data-stat') as StatKey;
-                baseStats[s] = parseInt((e.target as HTMLInputElement).value) || 0; renderUI();
-            }));
+            // biome-ignore lint/suspicious/useIterableCallbackReturn: addEventListener 체이닝 패턴
+            container.querySelectorAll(".base-stat-input").forEach((el) =>
+                el.addEventListener("change", (e) => {
+                    const s = (e.target as HTMLElement).getAttribute("data-stat") as StatKey;
+                    baseStats[s] = parseInt((e.target as HTMLInputElement).value, 10) || 0;
+                    renderUI();
+                }),
+            );
 
-            container.querySelectorAll('.iv-input').forEach(el => el.addEventListener('change', (e) => {
-                const s = (e.target as HTMLElement).getAttribute('data-stat') as StatKey;
-                ivs[s] = parseInt((e.target as HTMLInputElement).value) || 0; renderUI();
-            }));
+            // biome-ignore lint/suspicious/useIterableCallbackReturn: addEventListener 체이닝 패턴
+            container.querySelectorAll(".iv-input").forEach((el) =>
+                el.addEventListener("change", (e) => {
+                    const s = (e.target as HTMLElement).getAttribute("data-stat") as StatKey;
+                    ivs[s] = parseInt((e.target as HTMLInputElement).value, 10) || 0;
+                    renderUI();
+                }),
+            );
 
-            container.querySelectorAll('.ev-input').forEach(el => el.addEventListener('change', (e) => {
-                const s = (e.target as HTMLElement).getAttribute('data-stat') as StatKey;
-                evs[s] = parseInt((e.target as HTMLInputElement).value) || 0; renderUI();
-            }));
+            // biome-ignore lint/suspicious/useIterableCallbackReturn: addEventListener 체이닝 패턴
+            container.querySelectorAll(".ev-input").forEach((el) =>
+                el.addEventListener("change", (e) => {
+                    const s = (e.target as HTMLElement).getAttribute("data-stat") as StatKey;
+                    evs[s] = parseInt((e.target as HTMLInputElement).value, 10) || 0;
+                    renderUI();
+                }),
+            );
 
-            container.querySelectorAll('input[name="nature-plus"]').forEach(el => el.addEventListener('change', (e) => {
-                naturePlus = (e.target as HTMLInputElement).value as StatKey; renderUI();
-            }));
+            // biome-ignore lint/suspicious/useIterableCallbackReturn: addEventListener 체이닝 패턴
+            container.querySelectorAll('input[name="nature-plus"]').forEach((el) =>
+                el.addEventListener("change", (e) => {
+                    naturePlus = (e.target as HTMLInputElement).value as StatKey;
+                    renderUI();
+                }),
+            );
 
-            container.querySelectorAll('input[name="nature-minus"]').forEach(el => el.addEventListener('change', (e) => {
-                natureMinus = (e.target as HTMLInputElement).value as StatKey; renderUI();
-            }));
+            // biome-ignore lint/suspicious/useIterableCallbackReturn: addEventListener 체이닝 패턴
+            container.querySelectorAll('input[name="nature-minus"]').forEach((el) =>
+                el.addEventListener("change", (e) => {
+                    natureMinus = (e.target as HTMLInputElement).value as StatKey;
+                    renderUI();
+                }),
+            );
 
-            container.querySelector('#btn-nature-table')?.addEventListener('click', () => container.querySelector<HTMLElement>('#nature-modal')!.style.display = 'flex');
-            container.querySelector('#modal-close')?.addEventListener('click', () => container.querySelector<HTMLElement>('#nature-modal')!.style.display = 'none');
+            container
+                .querySelector("#btn-nature-table")
+                ?.addEventListener(
+                    "click",
+                    () => (container.querySelector<HTMLElement>("#nature-modal")!.style.display = "flex"),
+                );
+            container
+                .querySelector("#modal-close")
+                ?.addEventListener(
+                    "click",
+                    () => (container.querySelector<HTMLElement>("#nature-modal")!.style.display = "none"),
+                );
         };
 
         const unsubscribe = globalStore.subscribe(() => {
             if (moveAutocomplete) {
                 const gen = globalStore.getState().generation;
-                const targetGen = gen === 'champions' ? 9 : gen as number;
+                const targetGen = gen === "champions" ? 9 : (gen as number);
                 moveAutocomplete.setData(getSortedMoves());
                 moveAutocomplete.setOptions({
                     getItemStyle: (m: MoveData) => getMoveItemStyle(m, selectedPoke, targetGen),
-                    renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS)
+                    renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, selectedPoke, targetGen, TYPE_COLORS),
                 });
             }
         });
 
         renderUI();
-        
+
         return () => {
             unsubscribe();
         };

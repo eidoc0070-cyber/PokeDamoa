@@ -1,20 +1,23 @@
-import { renderStatCalculator } from '../stat-calculator/index.js';
-import { renderDamageCalculator } from '../damage-calculator/index.js';
-import { renderTypeCalculator } from '../type-calculator/index.js';
-import { renderCatchCalculator } from '../catch-calculator/index.js';
-import { updatePath } from '../../state/url-params.js';
+import { updatePath } from "../../state/url-params.js";
+import { renderCatchCalculator } from "../catch-calculator/index.js";
+import { renderDamageCalculator } from "../damage-calculator/index.js";
+import { renderStatCalculator } from "../stat-calculator/index.js";
+import { renderTypeCalculator } from "../type-calculator/index.js";
 
-type CalculatorSubTab = 'stat' | 'damage' | 'type' | 'catch';
+type CalculatorSubTab = "stat" | "damage" | "type" | "catch";
 
 export async function renderCalculatorHub(container: HTMLElement, initialSubTab?: string): Promise<() => void> {
     let currentCleanup: (() => void) | null = null;
-    
+
     // 우선순위: URL 파라미터 > 세션스토리지 > 기본값('stat')
-    let activeSubTab: CalculatorSubTab = (initialSubTab as CalculatorSubTab) || (sessionStorage.getItem('calculator_active_subtab') as CalculatorSubTab) || 'stat';
+    let activeSubTab: CalculatorSubTab =
+        (initialSubTab as CalculatorSubTab) ||
+        (sessionStorage.getItem("calculator_active_subtab") as CalculatorSubTab) ||
+        "stat";
 
     // 유효하지 않은 서브탭이면 기본값으로
-    const validTabs: CalculatorSubTab[] = ['stat', 'damage', 'type', 'catch'];
-    if (!validTabs.includes(activeSubTab)) activeSubTab = 'stat';
+    const validTabs: CalculatorSubTab[] = ["stat", "damage", "type", "catch"];
+    if (!validTabs.includes(activeSubTab)) activeSubTab = "stat";
 
     container.innerHTML = `
         <div class="calculator-hub" style="display:flex; flex-direction:column; min-height: 100%;">
@@ -28,44 +31,45 @@ export async function renderCalculatorHub(container: HTMLElement, initialSubTab?
         </div>
     `;
 
-    const contentEl = container.querySelector('#calculator-content') as HTMLElement;
-    const buttons = container.querySelectorAll<HTMLButtonElement>('.top-tab-btn');
+    const contentEl = container.querySelector("#calculator-content") as HTMLElement;
+    const buttons = container.querySelectorAll<HTMLButtonElement>(".top-tab-btn");
 
     const switchSubTab = async (tab: CalculatorSubTab, updateUrl = true) => {
         if (currentCleanup) currentCleanup();
         activeSubTab = tab;
-        sessionStorage.setItem('calculator_active_subtab', tab);
-        
+        sessionStorage.setItem("calculator_active_subtab", tab);
+
         if (updateUrl) {
-            updatePath('calculator', tab);
+            updatePath("calculator", tab);
         }
 
         // UI 업데이트
-        buttons.forEach(btn => {
-            if (btn.dataset.subtab === tab) btn.classList.add('active');
-            else btn.classList.remove('active');
+        buttons.forEach((btn) => {
+            if (btn.dataset.subtab === tab) btn.classList.add("active");
+            else btn.classList.remove("active");
         });
 
-        contentEl.innerHTML = '';
-        
+        contentEl.innerHTML = "";
+
         switch (tab) {
-            case 'stat':
+            case "stat":
                 currentCleanup = await renderStatCalculator(contentEl);
                 break;
-            case 'damage':
+            case "damage":
                 currentCleanup = await renderDamageCalculator(contentEl);
                 break;
-            case 'type':
+            case "type": {
                 const cleanup = renderTypeCalculator(contentEl);
-                currentCleanup = typeof cleanup === 'function' ? cleanup : () => {};
+                currentCleanup = typeof cleanup === "function" ? cleanup : () => {};
                 break;
-            case 'catch':
+            }
+            case "catch":
                 currentCleanup = await renderCatchCalculator(contentEl);
                 break;
         }
     };
 
-    buttons.forEach(btn => {
+    buttons.forEach((btn) => {
         btn.onclick = () => switchSubTab(btn.dataset.subtab as CalculatorSubTab);
     });
 

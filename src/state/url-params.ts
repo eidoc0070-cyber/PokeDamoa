@@ -9,10 +9,10 @@ export interface PathInfo {
 
 // 현재 탭 경로 가져오기 (예: /pokedex/pokemon -> { mainTab: 'pokedex', subTab: 'pokemon' })
 export function getTabFromPath(): PathInfo {
-    const pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
+    const pathParts = window.location.pathname.replace(/^\/|\/$/g, "").split("/");
     return {
-        mainTab: pathParts[0] || 'settings',
-        subTab: pathParts[1] // 없을 수도 있음
+        mainTab: pathParts[0] || "settings",
+        subTab: pathParts[1], // 없을 수도 있음
     };
 }
 
@@ -22,13 +22,13 @@ export function updatePath(mainTab: string, subTab?: string) {
     if (info.mainTab !== mainTab || info.subTab !== subTab) {
         const url = new URL(window.location.href);
         url.pathname = subTab ? `/${mainTab}/${subTab}` : `/${mainTab}`;
-        
+
         // 메인 탭이 바뀌면 이전 탭의 Query String 초기화, 서브 탭만 바뀌면 유지
         if (info.mainTab !== mainTab) {
-            url.search = '';
+            url.search = "";
         }
-        
-        window.history.pushState({}, '', url.toString());
+
+        window.history.pushState({}, "", url.toString());
     }
 }
 
@@ -46,13 +46,13 @@ export function getQueryParams(): Record<string, string> {
 export function updateQueryParams(params: Record<string, string | number | boolean>) {
     const url = new URL(window.location.href);
     Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined && value !== null && value !== "") {
             url.searchParams.set(key, String(value));
         } else {
             url.searchParams.delete(key);
         }
     });
-    window.history.replaceState({}, '', url.toString());
+    window.history.replaceState({}, "", url.toString());
 }
 
 // 현재 전체 상태 URL 반환 (공유용)
@@ -62,14 +62,14 @@ export function getCurrentStateUrl(): string {
 
 // URL로부터 상태 복원 (탭 이동 + 쿼리 스트링)
 export function restoreStateFromUrl(urlStr: string) {
-    if (!urlStr || !urlStr.startsWith('http')) return null;
+    if (!urlStr?.startsWith("http")) return null;
     try {
         const url = new URL(urlStr);
-        const pathParts = url.pathname.replace(/^\/|\/$/g, '').split('/');
-        const mainTab = pathParts[0] || 'settings';
+        const pathParts = url.pathname.replace(/^\/|\/$/g, "").split("/");
+        const mainTab = pathParts[0] || "settings";
         const subTab = pathParts[1];
         return { mainTab, subTab, params: Object.fromEntries(url.searchParams.entries()) };
-    } catch (e) {
+    } catch (_e) {
         return null;
     }
 }

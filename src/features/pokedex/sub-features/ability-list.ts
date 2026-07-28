@@ -1,6 +1,6 @@
-import { fetchAbilitiesData } from '../../../data/pokeapi.js';
-import type { AbilityData } from '../../../data/pokeapi.js';
-import { hangulIncludes } from '../../../utils/hangul.js';
+import type { AbilityData } from "../../../data/pokeapi.js";
+import { fetchAbilitiesData } from "../../../data/pokeapi.js";
+import { hangulIncludes } from "../../../utils/hangul.js";
 
 export async function renderAbilityList(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `<div style="padding:40px; text-align:center;">특성 데이터를 불러오는 중입니다...</div>`;
@@ -10,7 +10,7 @@ export async function renderAbilityList(container: HTMLElement): Promise<() => v
         let filteredData = fullData;
         let pagedData: AbilityData[] = [];
         const ITEMS_PER_PAGE = 50;
-        let searchTerm = '';
+        let searchTerm = "";
 
         container.innerHTML = `
             <div style="margin-bottom: 20px; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px;">
@@ -22,9 +22,9 @@ export async function renderAbilityList(container: HTMLElement): Promise<() => v
             </div>
         `;
 
-        const listEl = container.querySelector('#ability-list')!;
-        const searchInput = container.querySelector('#ability-search') as HTMLInputElement;
-        const btnLoadMore = container.querySelector('#btn-load-more') as HTMLButtonElement;
+        const listEl = container.querySelector("#ability-list")!;
+        const searchInput = container.querySelector("#ability-search") as HTMLInputElement;
+        const btnLoadMore = container.querySelector("#btn-load-more") as HTMLButtonElement;
 
         const createItemHTML = (a: AbilityData) => `
             <div class="ability-item" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -33,33 +33,44 @@ export async function renderAbilityList(container: HTMLElement): Promise<() => v
                     <span style="font-size: 0.8rem; color: #888;">${a.nameEn.toUpperCase()}</span>
                 </div>
                 <div style="font-size: 0.85rem; color: #333; line-height: 1.5; background: rgba(var(--primary-rgb), 0.05); padding: 10px; border-radius: 6px;">
-                    ${a.flavorText || a.effect || '상세 설명이 없습니다.'}
+                    ${a.flavorText || a.effect || "상세 설명이 없습니다."}
                 </div>
-                ${a.effect && a.flavorText ? `
+                ${
+                    a.effect && a.flavorText
+                        ? `
                     <details style="font-size: 0.75rem; color: #777; cursor: pointer; margin-top: 5px;">
                         <summary>상세 효과 (Technical)</summary>
                         <div style="padding: 5px; border-top: 1px dashed #ddd; margin-top: 5px;">${a.effect}</div>
                     </details>
-                ` : ''}
+                `
+                        : ""
+                }
             </div>
         `;
 
         const updateList = () => {
-            filteredData = fullData.filter(a => !searchTerm || hangulIncludes(a.searchKey, searchTerm));
+            filteredData = fullData.filter((a) => !searchTerm || hangulIncludes(a.searchKey, searchTerm));
             pagedData = filteredData.slice(0, ITEMS_PER_PAGE);
-            listEl.innerHTML = pagedData.map(createItemHTML).join('');
-            (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
+            listEl.innerHTML = pagedData.map(createItemHTML).join("");
+            (container.querySelector("#load-more-container") as HTMLElement).style.display =
+                pagedData.length < filteredData.length ? "block" : "none";
         };
 
-        searchInput.addEventListener('input', (e) => { searchTerm = (e.target as HTMLInputElement).value; updateList(); });
-        btnLoadMore.addEventListener('click', () => {
+        searchInput.addEventListener("input", (e) => {
+            searchTerm = (e.target as HTMLInputElement).value;
+            updateList();
+        });
+        btnLoadMore.addEventListener("click", () => {
             const next = filteredData.slice(pagedData.length, pagedData.length + ITEMS_PER_PAGE);
             pagedData.push(...next);
-            listEl.insertAdjacentHTML('beforeend', next.map(createItemHTML).join(''));
-            (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
+            listEl.insertAdjacentHTML("beforeend", next.map(createItemHTML).join(""));
+            (container.querySelector("#load-more-container") as HTMLElement).style.display =
+                pagedData.length < filteredData.length ? "block" : "none";
         });
 
         updateList();
-    } catch(err) { container.innerHTML = `<p>로드 실패: ${err}</p>`; }
+    } catch (err) {
+        container.innerHTML = `<p>로드 실패: ${err}</p>`;
+    }
     return () => {};
 }

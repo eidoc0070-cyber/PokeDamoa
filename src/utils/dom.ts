@@ -16,24 +16,24 @@ export interface CreateElementOptions {
  */
 export function createElement<K extends keyof HTMLElementTagNameMap>(
     tagName: K,
-    options: CreateElementOptions = {}
+    options: CreateElementOptions = {},
 ): HTMLElementTagNameMap[K] {
     const el = document.createElement(tagName);
     if (options.className) el.className = options.className;
     if (options.id) el.id = options.id;
     if (options.text) el.textContent = options.text;
     if (options.html) el.innerHTML = options.html;
-    
+
     if (options.style) {
         Object.assign(el.style, options.style);
     }
-    
+
     if (options.attributes) {
         for (const [key, value] of Object.entries(options.attributes)) {
             el.setAttribute(key, value);
         }
     }
-    
+
     return el;
 }
 

@@ -1,8 +1,8 @@
-import { fetchMovesData } from '../../../data/pokeapi.js';
-import type { MoveData } from '../../../data/pokeapi.js';
-import { TYPE_COLORS, TYPE_NAMES_KO, POKEMON_TYPES } from '../../../data/constants.js';
-import { hangulIncludes } from '../../../utils/hangul.js';
-import { globalStore } from '../../../state/store.js';
+import { POKEMON_TYPES, TYPE_COLORS, TYPE_NAMES_KO } from "../../../data/constants.js";
+import type { MoveData } from "../../../data/pokeapi.js";
+import { fetchMovesData } from "../../../data/pokeapi.js";
+import { globalStore } from "../../../state/store.js";
+import { hangulIncludes } from "../../../utils/hangul.js";
 
 export async function renderMoveList(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `<div style="padding:40px; text-align:center;">기술 데이터를 불러오는 중입니다...</div>`;
@@ -12,13 +12,13 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
         let filteredData: MoveData[] = [];
         let pagedData: MoveData[] = [];
         const ITEMS_PER_PAGE = 50;
-        
+
         // 필터 상태
-        let searchTerm = '';
-        let filterType: string | 'all' = 'all';
-        let filterCategory: string | 'all' = 'all';
-        let filterPower = [0, 255];
-        let filterAccuracy = [0, 100];
+        let searchTerm = "";
+        let filterType: string | "all" = "all";
+        let filterCategory: string | "all" = "all";
+        const filterPower = [0, 255];
+        const filterAccuracy = [0, 100];
 
         container.innerHTML = `
             <div style="background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
@@ -37,7 +37,7 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
                             <label style="display:block; font-weight:bold; font-size:0.85rem; margin-bottom:5px;">타입</label>
                             <select id="filter-move-type" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;">
                                 <option value="all">전체 타입</option>
-                                ${POKEMON_TYPES.map(t => `<option value="${t}">${TYPE_NAMES_KO[t]}</option>`).join('')}
+                                ${POKEMON_TYPES.map((t) => `<option value="${t}">${TYPE_NAMES_KO[t]}</option>`).join("")}
                             </select>
                         </div>
                         <div>
@@ -78,75 +78,86 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
             <p id="move-empty-msg" style="text-align:center; color:#888; display:none; padding: 40px;">검색 결과가 없습니다.</p>
         `;
 
-        const listEl = container.querySelector('#move-list')!;
-        const searchInput = container.querySelector('#move-search') as HTMLInputElement;
-        const btnLoadMore = container.querySelector('#btn-load-more') as HTMLButtonElement;
-        const emptyMsg = container.querySelector('#move-empty-msg') as HTMLElement;
-        
-        const filterPanel = container.querySelector('#move-filter-panel') as HTMLElement;
-        const btnToggleFilter = container.querySelector('#btn-toggle-move-filter') as HTMLButtonElement;
-        const typeSelect = container.querySelector('#filter-move-type') as HTMLSelectElement;
-        const catSelect = container.querySelector('#filter-move-category') as HTMLSelectElement;
-        const powerMin = container.querySelector('#filter-power-min') as HTMLInputElement;
-        const powerMax = container.querySelector('#filter-power-max') as HTMLInputElement;
-        const accMin = container.querySelector('#filter-acc-min') as HTMLInputElement;
-        const accMax = container.querySelector('#filter-acc-max') as HTMLInputElement;
+        const listEl = container.querySelector("#move-list")!;
+        const searchInput = container.querySelector("#move-search") as HTMLInputElement;
+        const btnLoadMore = container.querySelector("#btn-load-more") as HTMLButtonElement;
+        const emptyMsg = container.querySelector("#move-empty-msg") as HTMLElement;
+
+        const filterPanel = container.querySelector("#move-filter-panel") as HTMLElement;
+        const btnToggleFilter = container.querySelector("#btn-toggle-move-filter") as HTMLButtonElement;
+        const typeSelect = container.querySelector("#filter-move-type") as HTMLSelectElement;
+        const catSelect = container.querySelector("#filter-move-category") as HTMLSelectElement;
+        const powerMin = container.querySelector("#filter-power-min") as HTMLInputElement;
+        const powerMax = container.querySelector("#filter-power-max") as HTMLInputElement;
+        const accMin = container.querySelector("#filter-acc-min") as HTMLInputElement;
+        const accMax = container.querySelector("#filter-acc-max") as HTMLInputElement;
 
         const createItemHTML = (m: MoveData) => `
-            <div class="move-item" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid ${TYPE_COLORS[m.type] || '#ccc'};">
+            <div class="move-item" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid ${TYPE_COLORS[m.type] || "#ccc"};">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                     <span style="font-weight: bold; font-size: 1.1rem;">${m.nameKo}</span>
                     <span style="font-size: 0.8rem; color: #888;">${m.nameEn.toUpperCase()}</span>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
                     <span style="background: ${TYPE_COLORS[m.type]}; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${TYPE_NAMES_KO[m.type] || m.type}</span>
-                    <span style="background: #eee; color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${m.category === 'physical' ? '물리' : m.category === 'special' ? '특수' : '변화'}</span>
-                    <span style="font-weight: bold; font-size: 0.9rem;">위력: ${m.power || '-'}</span>
-                    <span style="font-weight: bold; font-size: 0.9rem;">명중: ${m.accuracy || '-'}</span>
-                    <span style="font-weight: bold; font-size: 0.9rem;">PP: ${m.pp || '-'}</span>
-                    ${(m.priority || 0) !== 0 ? `<span style="background:#fce4ec; color:#d81b60; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight:bold;">우선도: ${m.priority! > 0 ? '+' : ''}${m.priority}</span>` : ''}
+                    <span style="background: #eee; color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${m.category === "physical" ? "물리" : m.category === "special" ? "특수" : "변화"}</span>
+                    <span style="font-weight: bold; font-size: 0.9rem;">위력: ${m.power || "-"}</span>
+                    <span style="font-weight: bold; font-size: 0.9rem;">명중: ${m.accuracy || "-"}</span>
+                    <span style="font-weight: bold; font-size: 0.9rem;">PP: ${m.pp || "-"}</span>
+                    ${(m.priority || 0) !== 0 ? `<span style="background:#fce4ec; color:#d81b60; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight:bold;">우선도: ${m.priority! > 0 ? "+" : ""}${m.priority}</span>` : ""}
                 </div>
                 <div style="font-size: 0.85rem; color: #333; line-height: 1.5; background: rgba(var(--primary-rgb), 0.05); padding: 10px; border-radius: 6px; margin-bottom: 5px;">
-                    ${m.flavorText || m.effect || '상세 설명이 없습니다.'}
+                    ${m.flavorText || m.effect || "상세 설명이 없습니다."}
                 </div>
-                ${m.effect && m.flavorText ? `
+                ${
+                    m.effect && m.flavorText
+                        ? `
                     <details style="font-size: 0.75rem; color: #777; cursor: pointer;">
                         <summary>기술 상세 효과 (Technical)</summary>
                         <div style="padding: 5px; margin-top: 5px; border-top: 1px dashed #ddd;">${m.effect}</div>
                     </details>
-                ` : ''}
-                ${m.effectTags && m.effectTags.length > 0 ? `
+                `
+                        : ""
+                }
+                ${
+                    m.effectTags && m.effectTags.length > 0
+                        ? `
                     <div style="display:flex; gap:4px; margin-top:8px; flex-wrap: wrap;">
-                        ${m.effectTags.map((tag: any) => {
-                            let label = '';
-                            if (tag.type === 'rank') label = `${tag.stat.toUpperCase()} ${tag.change > 0 ? '+' : ''}${tag.change}`;
-                            else if (tag.type === 'status') label = `상태이상(${tag.ailmentId})`;
-                            else label = tag.type;
-                            return `<span style="border: 1px solid #ddd; padding: 1px 5px; border-radius: 4px; font-size: 0.7rem; color: #666;">#${label}</span>`;
-                        }).join('')}
+                        ${m.effectTags
+                            .map((tag: any) => {
+                                let label = "";
+                                if (tag.type === "rank")
+                                    label = `${tag.stat.toUpperCase()} ${tag.change > 0 ? "+" : ""}${tag.change}`;
+                                else if (tag.type === "status") label = `상태이상(${tag.ailmentId})`;
+                                else label = tag.type;
+                                return `<span style="border: 1px solid #ddd; padding: 1px 5px; border-radius: 4px; font-size: 0.7rem; color: #666;">#${label}</span>`;
+                            })
+                            .join("")}
                     </div>
-                ` : ''}
+                `
+                        : ""
+                }
             </div>
         `;
 
         const updateList = () => {
             const currentGen = globalStore.getState().generation;
-            const targetGen = typeof currentGen === 'number' ? currentGen : 9;
+            const _targetGen = typeof currentGen === "number" ? currentGen : 9;
 
-            filteredData = fullData.filter(m => {
+            filteredData = fullData.filter((m) => {
                 // 해당 세대 도입 기술인지 확인
-                // PokeAPI에서 기술의 도입 세대 데이터가 MoveData.id 등으로 추측 가능하지만 
+                // PokeAPI에서 기술의 도입 세대 데이터가 MoveData.id 등으로 추측 가능하지만
                 // 여기서는 m.changelog나 m.id 기준으로 필터링 (간략화를 위해 생략하거나 데이터 구조에 따라 적용)
                 // 현재 MoveData에는 genId가 명시되어 있지 않으나, id 범위로 대략 알 수 있음.
                 // 임시로 m.id < 1000 정도로 가정 (데이터 빌드 시 추가 필요)
-                
+
                 if (searchTerm && !hangulIncludes(m.searchKey, searchTerm)) return false;
-                if (filterType !== 'all' && m.type !== filterType) return false;
-                if (filterCategory !== 'all' && m.category !== filterCategory) return false;
-                
+                if (filterType !== "all" && m.type !== filterType) return false;
+                if (filterCategory !== "all" && m.category !== filterCategory) return false;
+
                 const pwr = m.power || 0;
                 if (pwr < filterPower[0]! || pwr > filterPower[1]!) return false;
-                
+
                 const acc = m.accuracy || 100;
                 if (acc < filterAccuracy[0]! || acc > filterAccuracy[1]!) return false;
 
@@ -154,32 +165,55 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
             });
 
             pagedData = filteredData.slice(0, ITEMS_PER_PAGE);
-            listEl.innerHTML = pagedData.map(createItemHTML).join('');
-            (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
-            emptyMsg.style.display = pagedData.length === 0 ? 'block' : 'none';
+            listEl.innerHTML = pagedData.map(createItemHTML).join("");
+            (container.querySelector("#load-more-container") as HTMLElement).style.display =
+                pagedData.length < filteredData.length ? "block" : "none";
+            emptyMsg.style.display = pagedData.length === 0 ? "block" : "none";
         };
 
-        searchInput.addEventListener('input', (e) => { searchTerm = (e.target as HTMLInputElement).value; updateList(); });
-        
-        btnToggleFilter.addEventListener('click', () => {
-            const isHidden = filterPanel.style.display === 'none';
-            filterPanel.style.display = isHidden ? 'block' : 'none';
-            btnToggleFilter.textContent = isHidden ? '필터 닫기 🔼' : '고급 필터 🔍';
+        searchInput.addEventListener("input", (e) => {
+            searchTerm = (e.target as HTMLInputElement).value;
+            updateList();
         });
 
-        typeSelect.addEventListener('change', (e) => { filterType = (e.target as HTMLSelectElement).value; updateList(); });
-        catSelect.addEventListener('change', (e) => { filterCategory = (e.target as HTMLSelectElement).value; updateList(); });
-        
-        powerMin.addEventListener('input', (e) => { filterPower[0] = parseInt((e.target as HTMLInputElement).value) || 0; updateList(); });
-        powerMax.addEventListener('input', (e) => { filterPower[1] = parseInt((e.target as HTMLInputElement).value) || 255; updateList(); });
-        accMin.addEventListener('input', (e) => { filterAccuracy[0] = parseInt((e.target as HTMLInputElement).value) || 0; updateList(); });
-        accMax.addEventListener('input', (e) => { filterAccuracy[1] = parseInt((e.target as HTMLInputElement).value) || 100; updateList(); });
+        btnToggleFilter.addEventListener("click", () => {
+            const isHidden = filterPanel.style.display === "none";
+            filterPanel.style.display = isHidden ? "block" : "none";
+            btnToggleFilter.textContent = isHidden ? "필터 닫기 🔼" : "고급 필터 🔍";
+        });
 
-        btnLoadMore.addEventListener('click', () => {
+        typeSelect.addEventListener("change", (e) => {
+            filterType = (e.target as HTMLSelectElement).value;
+            updateList();
+        });
+        catSelect.addEventListener("change", (e) => {
+            filterCategory = (e.target as HTMLSelectElement).value;
+            updateList();
+        });
+
+        powerMin.addEventListener("input", (e) => {
+            filterPower[0] = parseInt((e.target as HTMLInputElement).value, 10) || 0;
+            updateList();
+        });
+        powerMax.addEventListener("input", (e) => {
+            filterPower[1] = parseInt((e.target as HTMLInputElement).value, 10) || 255;
+            updateList();
+        });
+        accMin.addEventListener("input", (e) => {
+            filterAccuracy[0] = parseInt((e.target as HTMLInputElement).value, 10) || 0;
+            updateList();
+        });
+        accMax.addEventListener("input", (e) => {
+            filterAccuracy[1] = parseInt((e.target as HTMLInputElement).value, 10) || 100;
+            updateList();
+        });
+
+        btnLoadMore.addEventListener("click", () => {
             const next = filteredData.slice(pagedData.length, pagedData.length + ITEMS_PER_PAGE);
             pagedData.push(...next);
-            listEl.insertAdjacentHTML('beforeend', next.map(createItemHTML).join(''));
-            (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
+            listEl.insertAdjacentHTML("beforeend", next.map(createItemHTML).join(""));
+            (container.querySelector("#load-more-container") as HTMLElement).style.display =
+                pagedData.length < filteredData.length ? "block" : "none";
         });
 
         // 전역 설정 변경 구독
@@ -189,6 +223,8 @@ export async function renderMoveList(container: HTMLElement): Promise<() => void
 
         updateList();
         return unsubscribe;
-
-    } catch(err) { container.innerHTML = `<p>로드 실패: ${err}</p>`; return () => {}; }
+    } catch (err) {
+        container.innerHTML = `<p>로드 실패: ${err}</p>`;
+        return () => {};
+    }
 }

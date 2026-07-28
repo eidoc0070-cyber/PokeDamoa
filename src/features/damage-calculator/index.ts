@@ -1,12 +1,22 @@
-import { fetchPokedexData, fetchMovesData } from '../../data/pokeapi.js';
-import type { PokemonData, MoveData } from '../../data/pokeapi.js';
-import { TYPE_COLORS, TYPE_NAMES_KO, TYPE_MATCHUPS, POKEMON_TYPES, NATURES } from '../../data/constants.js';
-import type { PokemonType, StatKey } from '../../data/constants.js';
-import { calculateStat, calculateBaseDamage, calculateDamageRolls, getRankMultiplier, getStatsForGen, getTypesForGen, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from '../../utils/pokemon-math.js';
-import { createAutocomplete } from '../../components/SearchAutocomplete.js';
-import { globalStore } from '../../state/store.js';
-import { renderAccordion } from '../../components/Accordion.js'; // 모듈화된 아코디언 적용
-import { openPartySelectorModal } from '../party-builder/sub-components/PartySelectorModal.js';
+import { renderAccordion } from "../../components/Accordion.js"; // 모듈화된 아코디언 적용
+import { createAutocomplete } from "../../components/SearchAutocomplete.js";
+import type { PokemonType, StatKey } from "../../data/constants.js";
+import { NATURES, TYPE_COLORS, TYPE_MATCHUPS, TYPE_NAMES_KO } from "../../data/constants.js";
+import type { MoveData, PokemonData } from "../../data/pokeapi.js";
+import { fetchMovesData, fetchPokedexData } from "../../data/pokeapi.js";
+import { globalStore } from "../../state/store.js";
+import {
+    calculateBaseDamage,
+    calculateDamageRolls,
+    calculateStat,
+    getMoveItemStyle,
+    getRankMultiplier,
+    getSortedMovesForPoke,
+    getStatsForGen,
+    getTypesForGen,
+    renderMoveItemExtra,
+} from "../../utils/pokemon-math.js";
+import { openPartySelectorModal } from "../party-builder/sub-components/PartySelectorModal.js";
 
 export async function renderDamageCalculator(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `<div style="text-align:center; padding: 40px;"><p>데이터를 불러오는 중...</p></div>`;
@@ -15,58 +25,68 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         const [fullPokes, fullMoves] = await Promise.all([fetchPokedexData(), fetchMovesData()]);
 
         let atkPoke: PokemonData | null = null;
-        let atkStatVal = 100, spaStatVal = 100;
-        let atkRank = 0, spaRank = 0;
+        let atkStatVal = 100,
+            spaStatVal = 100;
+        const atkRank = 0,
+            spaRank = 0;
         let atkEvs = { hp: 0, atk: 252, def: 0, spa: 252, spd: 0, spe: 0 };
         let atkIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
         let atkNatureId = 0;
-        
+
         let selectedMove: MoveData | null = null;
-        let movePower = 0, moveType = 'normal', moveCategory: 'physical' | 'special' = 'physical';
-        
+        let movePower = 0,
+            _moveType = "normal",
+            moveCategory: "physical" | "special" = "physical";
+
         let defPoke: PokemonData | null = null;
-        let hpVal = 100, defVal = 100, spdVal = 100;
-        let defRank = 0, spdRank = 0;
+        let hpVal = 100,
+            defVal = 100,
+            spdVal = 100;
+        const defRank = 0,
+            spdRank = 0;
         let defEvs = { hp: 252, atk: 0, def: 252, spa: 0, spd: 252, spe: 0 };
         let defIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
         let defNatureId = 0;
 
-        let level = 50, screenOn = false;
-        let stabMod = 1.0, typeMulti = 1.0, itemMod = 1.0;
-        
+        let level = 50,
+            screenOn = false;
+        let stabMod = 1.0,
+            typeMulti = 1.0,
+            itemMod = 1.0;
+
         // 아코디언 상태 관리
         let isAtkPanelOpen = true;
         let isDefPanelOpen = false; // 기본적으로 방어자는 접어둠
 
         const getSortedMoves = (poke: PokemonData | null) => {
             const currentGen = globalStore.getState().generation;
-            const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
-            return getSortedMovesForPoke(fullMoves, poke, targetGen, m => m.power > 0);
+            const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
+            return getSortedMovesForPoke(fullMoves, poke, targetGen, (m) => m.power > 0);
         };
 
         const updateAtkStats = () => {
             if (!atkPoke) return;
             const currentGen = globalStore.getState().generation;
-            const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+            const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
             const stats = getStatsForGen(atkPoke, targetGen);
-            const nature = NATURES.find(n => n.id === atkNatureId);
-            
+            const nature = NATURES.find((n) => n.id === atkNatureId);
+
             const getMod = (key: StatKey) => {
                 if (nature?.plus === key) return 1.1;
                 if (nature?.minus === key) return 0.9;
                 return 1.0;
             };
 
-            atkStatVal = calculateStat(stats.atk, atkIvs.atk, atkEvs.atk, level, false, getMod('atk'));
-            spaStatVal = calculateStat(stats.spa, atkIvs.spa, atkEvs.spa, level, false, getMod('spa'));
+            atkStatVal = calculateStat(stats.atk, atkIvs.atk, atkEvs.atk, level, false, getMod("atk"));
+            spaStatVal = calculateStat(stats.spa, atkIvs.spa, atkEvs.spa, level, false, getMod("spa"));
         };
 
         const updateDefStats = () => {
             if (!defPoke) return;
             const currentGen = globalStore.getState().generation;
-            const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+            const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
             const stats = getStatsForGen(defPoke, targetGen);
-            const nature = NATURES.find(n => n.id === defNatureId);
+            const nature = NATURES.find((n) => n.id === defNatureId);
 
             const getMod = (key: StatKey) => {
                 if (nature?.plus === key) return 1.1;
@@ -75,13 +95,13 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             };
 
             hpVal = calculateStat(stats.hp, defIvs.hp, defEvs.hp, level, true);
-            defVal = calculateStat(stats.def, defIvs.def, defEvs.def, level, false, getMod('def'));
-            spdVal = calculateStat(stats.spd, defIvs.spd, defEvs.spd, level, false, getMod('spd'));
+            defVal = calculateStat(stats.def, defIvs.def, defEvs.def, level, false, getMod("def"));
+            spdVal = calculateStat(stats.spd, defIvs.spd, defEvs.spd, level, false, getMod("spd"));
         };
 
         const updateModifiers = () => {
             const currentGen = globalStore.getState().generation;
-            const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+            const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
 
             if (selectedMove && atkPoke) {
                 const types = getTypesForGen(atkPoke, targetGen);
@@ -108,26 +128,28 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
         const calculateDamageRange = () => {
             updateModifiers();
             if (!selectedMove) return { rolls: [0], pcts: [0] };
-            
-            let rawAtk = moveCategory === 'physical' ? atkStatVal : spaStatVal;
-            let atk = Math.floor(rawAtk * getRankMultiplier(moveCategory === 'physical' ? atkRank : spaRank));
 
-            let rawDef = moveCategory === 'physical' ? defVal : spdVal;
-            let def = Math.floor(rawDef * getRankMultiplier(moveCategory === 'physical' ? defRank : spdRank));
+            const rawAtk = moveCategory === "physical" ? atkStatVal : spaStatVal;
+            const atk = Math.floor(rawAtk * getRankMultiplier(moveCategory === "physical" ? atkRank : spaRank));
+
+            const rawDef = moveCategory === "physical" ? defVal : spdVal;
+            let def = Math.floor(rawDef * getRankMultiplier(moveCategory === "physical" ? defRank : spdRank));
             if (def < 1) def = 1;
 
             let baseDmg = calculateBaseDamage(level, movePower, atk, def);
             if (screenOn) baseDmg = Math.floor(baseDmg * 0.5);
-            
+
             const rolls = calculateDamageRolls(baseDmg, stabMod, typeMulti, itemMod);
-            const pcts = rolls.map(r => (r / hpVal) * 100);
+            const pcts = rolls.map((r) => (r / hpVal) * 100);
             return { rolls, pcts };
         };
 
         const renderUI = () => {
             const { rolls, pcts } = calculateDamageRange();
-            const minDmg = rolls[0]!, maxDmg = rolls[rolls.length - 1]!;
-            const minPct = pcts[0]!, maxPct = pcts[pcts.length - 1]!;
+            const minDmg = rolls[0]!,
+                maxDmg = rolls[rolls.length - 1]!;
+            const minPct = pcts[0]!,
+                maxPct = pcts[pcts.length - 1]!;
             const currentGen = globalStore.getState().generation;
 
             const atkContent = `
@@ -169,18 +191,18 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <h2 style="margin:0; font-size:1.3rem;">데미지 계산기</h2>
                         <span style="background:var(--primary-color); color:#fff; padding:4px 12px; border-radius:20px; font-weight:bold; font-size:0.8rem;">
-                            ${currentGen === 'champions' ? 'Champions' : currentGen + '세대'}
+                            ${currentGen === "champions" ? "Champions" : `${currentGen}세대`}
                         </span>
                     </div>
                     
                     <!-- 아코디언 컴포넌트를 사용한 공격자/방어자 패널 -->
-                    ${renderAccordion({ id: 'atk', title: '공격자 (Attacker)', icon: '⚔️', contentHtml: atkContent, isOpen: isAtkPanelOpen, borderColor: '#e53935' })}
-                    ${renderAccordion({ id: 'def', title: '방어자 (Defender)', icon: '🛡️', contentHtml: defContent, isOpen: isDefPanelOpen, borderColor: '#4caf50' })}
+                    ${renderAccordion({ id: "atk", title: "공격자 (Attacker)", icon: "⚔️", contentHtml: atkContent, isOpen: isAtkPanelOpen, borderColor: "#e53935" })}
+                    ${renderAccordion({ id: "def", title: "방어자 (Defender)", icon: "🛡️", contentHtml: defContent, isOpen: isDefPanelOpen, borderColor: "#4caf50" })}
 
                     <!-- 결과 패널 -->
                     <div class="card" style="text-align:center; border:2px solid #333; margin-top:10px;">
                         <h3 style="margin:0; color:var(--text-color);">계산 결과</h3>
-                        <div style="font-size:2.8rem; font-weight:900; margin:15px 0; color: ${maxPct >= 100 ? '#d32f2f' : '#1976d2'}; text-shadow: 1px 1px 0px rgba(0,0,0,0.1);">
+                        <div style="font-size:2.8rem; font-weight:900; margin:15px 0; color: ${maxPct >= 100 ? "#d32f2f" : "#1976d2"}; text-shadow: 1px 1px 0px rgba(0,0,0,0.1);">
                             ${minPct.toFixed(1)}% <span style="font-size:1.5rem; color:#888;">~</span> ${maxPct.toFixed(1)}%
                         </div>
                         
@@ -190,7 +212,7 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                         </div>
                         
                         <div style="font-size:0.9rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:8px; background:#f5f5f5; padding:6px 12px; border-radius:20px; border:1px solid #ddd;">
-                            ${selectedMove ? `<strong>${selectedMove.nameKo}</strong> (위력 ${movePower}) <span style="display:inline-block; width:12px; height:12px; background:${TYPE_COLORS[selectedMove.type as PokemonType]}; border-radius:50%;"></span> ${TYPE_NAMES_KO[selectedMove.type as PokemonType]}` : '기술을 선택해주세요.'}
+                            ${selectedMove ? `<strong>${selectedMove.nameKo}</strong> (위력 ${movePower}) <span style="display:inline-block; width:12px; height:12px; background:${TYPE_COLORS[selectedMove.type as PokemonType]}; border-radius:50%;"></span> ${TYPE_NAMES_KO[selectedMove.type as PokemonType]}` : "기술을 선택해주세요."}
                         </div>
                     </div>
                 </div>
@@ -202,21 +224,21 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
 
         const attachEvents = () => {
             const currentGen = globalStore.getState().generation;
-            const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+            const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
 
             // 아코디언 상태 동기화 이벤트
-            container.querySelector('.accordion-header')?.parentElement?.addEventListener('click', (e) => {
-                const header = (e.target as HTMLElement).closest('.accordion-header');
+            container.querySelector(".accordion-header")?.parentElement?.addEventListener("click", (e) => {
+                const header = (e.target as HTMLElement).closest(".accordion-header");
                 if (header) {
-                    const id = header.parentElement?.querySelector('.accordion-content')?.id;
-                    if (id === 'atk-content') isAtkPanelOpen = !isAtkPanelOpen;
-                    if (id === 'def-content') isDefPanelOpen = !isDefPanelOpen;
+                    const id = header.parentElement?.querySelector(".accordion-content")?.id;
+                    if (id === "atk-content") isAtkPanelOpen = !isAtkPanelOpen;
+                    if (id === "def-content") isDefPanelOpen = !isDefPanelOpen;
                 }
             });
 
-            container.querySelector('#btn-load-atk-party')?.addEventListener('click', () => {
+            container.querySelector("#btn-load-atk-party")?.addEventListener("click", () => {
                 openPartySelectorModal((slot) => {
-                    const p = fullPokes.find(p => p.id === slot.pokemonId);
+                    const p = fullPokes.find((p) => p.id === slot.pokemonId);
                     if (p) {
                         atkPoke = p;
                         atkEvs = { ...slot.evs };
@@ -233,9 +255,9 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
                 });
             });
 
-            container.querySelector('#btn-load-def-party')?.addEventListener('click', () => {
+            container.querySelector("#btn-load-def-party")?.addEventListener("click", () => {
                 openPartySelectorModal((slot) => {
-                    const p = fullPokes.find(p => p.id === slot.pokemonId);
+                    const p = fullPokes.find((p) => p.id === slot.pokemonId);
                     if (p) {
                         defPoke = p;
                         defEvs = { ...slot.evs };
@@ -250,61 +272,77 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             });
 
             createAutocomplete({
-                container: container.querySelector('#atk-poke-search-container')!,
-                label: '공격자 포켓몬', placeholder: '이름 입력', data: fullPokes.filter(p => p.genId <= targetGen),
+                container: container.querySelector("#atk-poke-search-container")!,
+                label: "공격자 포켓몬",
+                placeholder: "이름 입력",
+                data: fullPokes.filter((p) => p.genId <= targetGen),
                 initialValue: atkPoke?.nameKo,
-                getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
-                onSelect: p => { 
-                    atkPoke = p; 
+                getSearchKey: (p) => p.searchKey,
+                getDisplayName: (p) => p.nameKo,
+                getDisplaySub: (p) => `(${p.nameEn})`,
+                onSelect: (p) => {
+                    atkPoke = p;
                     atkEvs = { hp: 0, atk: 252, def: 0, spa: 252, spd: 0, spe: 0 };
                     atkIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
                     atkNatureId = 0;
-                    updateAtkStats(); 
+                    updateAtkStats();
                     if (moveAutocomplete) {
                         const currentGen = globalStore.getState().generation;
-                        const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+                        const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
                         moveAutocomplete.setData(getSortedMoves(p));
-                        moveAutocomplete.setOptions({ 
+                        moveAutocomplete.setOptions({
                             getItemStyle: (m: MoveData) => getMoveItemStyle(m, atkPoke, targetGen),
-                            renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
-                        });                    }
-                    renderUI(); 
-                }
+                            renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS),
+                        });
+                    }
+                    renderUI();
+                },
             });
 
             createAutocomplete({
-                container: container.querySelector('#def-poke-search-container')!,
-                label: '방어자 포켓몬', placeholder: '이름 입력', data: fullPokes.filter(p => p.genId <= targetGen),
+                container: container.querySelector("#def-poke-search-container")!,
+                label: "방어자 포켓몬",
+                placeholder: "이름 입력",
+                data: fullPokes.filter((p) => p.genId <= targetGen),
                 initialValue: defPoke?.nameKo,
-                getSearchKey: p => p.searchKey, getDisplayName: p => p.nameKo, getDisplaySub: p => `(${p.nameEn})`,
-                onSelect: p => { 
-                    defPoke = p; 
+                getSearchKey: (p) => p.searchKey,
+                getDisplayName: (p) => p.nameKo,
+                getDisplaySub: (p) => `(${p.nameEn})`,
+                onSelect: (p) => {
+                    defPoke = p;
                     defEvs = { hp: 252, atk: 0, def: 252, spa: 0, spd: 252, spe: 0 };
                     defIvs = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
                     defNatureId = 0;
-                    updateDefStats(); 
-                    renderUI(); 
-                }
+                    updateDefStats();
+                    renderUI();
+                },
             });
 
             moveAutocomplete = createAutocomplete({
-                container: container.querySelector('#move-search-container')!,
-                label: '기술 선택', placeholder: '이름 입력', data: getSortedMoves(atkPoke),
+                container: container.querySelector("#move-search-container")!,
+                label: "기술 선택",
+                placeholder: "이름 입력",
+                data: getSortedMoves(atkPoke),
                 initialValue: selectedMove?.nameKo,
-                getSearchKey: m => m.searchKey, 
-                getDisplayName: m => m.nameKo, 
-                getDisplaySub: m => `(위력 ${m.power || '-'}, ${TYPE_NAMES_KO[m.type as PokemonType]})`,
-                getItemStyle: m => getMoveItemStyle(m, atkPoke, targetGen),
-                renderItemExtra: m => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS),
-                onSelect: m => { 
-                    selectedMove = m; movePower = m.power || 0; moveType = m.type; moveCategory = m.category as any;
-                    renderUI(); 
-                }
+                getSearchKey: (m) => m.searchKey,
+                getDisplayName: (m) => m.nameKo,
+                getDisplaySub: (m) => `(위력 ${m.power || "-"}, ${TYPE_NAMES_KO[m.type as PokemonType]})`,
+                getItemStyle: (m) => getMoveItemStyle(m, atkPoke, targetGen),
+                renderItemExtra: (m) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS),
+                onSelect: (m) => {
+                    selectedMove = m;
+                    movePower = m.power || 0;
+                    _moveType = m.type;
+                    moveCategory = m.category as any;
+                    renderUI();
+                },
             });
 
-            container.querySelector('#level-input')?.addEventListener('change', (e) => {
-                level = parseInt((e.target as HTMLInputElement).value) || 50;
-                updateAtkStats(); updateDefStats(); renderUI();
+            container.querySelector("#level-input")?.addEventListener("change", (e) => {
+                level = parseInt((e.target as HTMLInputElement).value, 10) || 50;
+                updateAtkStats();
+                updateDefStats();
+                renderUI();
             });
         };
 
@@ -313,19 +351,21 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
             updateDefStats();
             if (moveAutocomplete) {
                 const currentGen = globalStore.getState().generation;
-                const targetGen = currentGen === 'champions' ? 9 : currentGen as number;
+                const targetGen = currentGen === "champions" ? 9 : (currentGen as number);
                 moveAutocomplete.setData(getSortedMoves(atkPoke));
-                moveAutocomplete.setOptions({ 
+                moveAutocomplete.setOptions({
                     getItemStyle: (m: MoveData) => getMoveItemStyle(m, atkPoke, targetGen),
-                    renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS)
-                });            }
+                    renderItemExtra: (m: MoveData) => renderMoveItemExtra(m, atkPoke, targetGen, TYPE_COLORS),
+                });
+            }
             renderUI();
         });
 
-        updateAtkStats(); updateDefStats(); renderUI();
+        updateAtkStats();
+        updateDefStats();
+        renderUI();
         return unsubscribe;
-
-    } catch(err) {
+    } catch (err) {
         container.innerHTML = `<p style="color:red;">오류: ${err}</p>`;
         return () => {};
     }

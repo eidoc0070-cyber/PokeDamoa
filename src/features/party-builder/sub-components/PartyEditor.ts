@@ -1,11 +1,17 @@
-import { renderPokemonSlotEditor } from './PokemonSlotEditor.js';
-import type { Party, PokemonSlot } from '../types.js';
-import type { ParserContext } from '../parser.js';
-import { renderImportExportModal } from './ImportExportModal.js';
-import { parseShowdown, exportShowdown } from '../parser.js';
+import type { ParserContext } from "../parser.js";
+import { exportShowdown, parseShowdown } from "../parser.js";
+import type { Party, PokemonSlot } from "../types.js";
+import { renderImportExportModal } from "./ImportExportModal.js";
+import { renderPokemonSlotEditor } from "./PokemonSlotEditor.js";
 
-export function renderPartyEditor(container: HTMLElement, party: Party, ctx: ParserContext, onSave: (p: Party) => void, onBack: () => void) {
-    let viewMode: 'visual' | 'text' = 'visual';
+export function renderPartyEditor(
+    container: HTMLElement,
+    party: Party,
+    ctx: ParserContext,
+    onSave: (p: Party) => void,
+    onBack: () => void,
+) {
+    let viewMode: "visual" | "text" = "visual";
 
     const render = () => {
         container.innerHTML = `
@@ -17,83 +23,87 @@ export function renderPartyEditor(container: HTMLElement, party: Party, ctx: Par
                 </div>
 
                 <div style="display:flex; gap:10px;">
-                    <button id="btn-mode-visual" class="btn ${viewMode === 'visual' ? 'btn-primary' : ''}" style="flex:1;">🧩 시각적 편집</button>
-                    <button id="btn-mode-text" class="btn ${viewMode === 'text' ? 'btn-primary' : ''}" style="flex:1;">📝 텍스트 편집</button>
+                    <button id="btn-mode-visual" class="btn ${viewMode === "visual" ? "btn-primary" : ""}" style="flex:1;">🧩 시각적 편집</button>
+                    <button id="btn-mode-text" class="btn ${viewMode === "text" ? "btn-primary" : ""}" style="flex:1;">📝 텍스트 편집</button>
                 </div>
 
                 <div id="editor-content" style="flex:1; overflow-y: auto;">
-                    ${viewMode === 'visual' ? `
+                    ${
+                        viewMode === "visual"
+                            ? `
                         <div style="display:flex; gap:10px; margin-bottom:15px;">
                             <button id="btn-import" class="btn" style="flex:1;">📥 가져오기</button>
                             <button id="btn-export" class="btn" style="flex:1;">📤 내보내기</button>
                         </div>
                         <div id="slots-container" style="display:grid; grid-template-columns: 1fr; gap:20px;"></div>
-                    ` : `
+                    `
+                            : `
                         <div style="height:100%; display:flex; flex-direction:column; gap:10px;">
                             <p style="font-size:0.85rem; color:#666; margin:0;">Showdown 형식을 지원합니다. (수정 시 즉시 반영)</p>
                             <textarea id="text-editor" style="flex:1; width:100%; min-height:400px; padding:15px; font-family:monospace; font-size:0.9rem; border:1px solid #ddd; border-radius:12px; resize:none; background:var(--surface-color); line-height:1.5;">${exportAll(party, ctx)}</textarea>
                         </div>
-                    `}
+                    `
+                    }
                 </div>
             </div>
         `;
 
         attachEvents();
-        if (viewMode === 'visual') {
+        if (viewMode === "visual") {
             renderSlots();
         }
     };
 
     const attachEvents = () => {
-        container.querySelector('#btn-back')?.addEventListener('click', onBack);
-        
-        const nameInput = container.querySelector('#party-name-input') as HTMLInputElement;
-        container.querySelector('#btn-save-party')?.addEventListener('click', () => {
-            party.name = nameInput.value || '무제 파티';
+        container.querySelector("#btn-back")?.addEventListener("click", onBack);
+
+        const nameInput = container.querySelector("#party-name-input") as HTMLInputElement;
+        container.querySelector("#btn-save-party")?.addEventListener("click", () => {
+            party.name = nameInput.value || "무제 파티";
             party.updatedAt = new Date().toISOString();
             onSave(party);
         });
 
-        container.querySelector('#btn-mode-visual')?.addEventListener('click', () => {
-            if (viewMode === 'text') {
+        container.querySelector("#btn-mode-visual")?.addEventListener("click", () => {
+            if (viewMode === "text") {
                 syncFromText();
-                viewMode = 'visual';
+                viewMode = "visual";
                 render();
             }
         });
 
-        container.querySelector('#btn-mode-text')?.addEventListener('click', () => {
-            if (viewMode === 'visual') {
-                viewMode = 'text';
+        container.querySelector("#btn-mode-text")?.addEventListener("click", () => {
+            if (viewMode === "visual") {
+                viewMode = "text";
                 render();
             }
         });
 
-        if (viewMode === 'visual') {
-            container.querySelector('#btn-import')?.addEventListener('click', () => {
+        if (viewMode === "visual") {
+            container.querySelector("#btn-import")?.addEventListener("click", () => {
                 renderImportExportModal({
                     container: document.body,
-                    mode: 'import',
+                    mode: "import",
                     ctx,
                     onImport: (slots) => {
                         party.members = slots;
                         render();
-                    }
+                    },
                 });
             });
 
-            container.querySelector('#btn-export')?.addEventListener('click', () => {
+            container.querySelector("#btn-export")?.addEventListener("click", () => {
                 renderImportExportModal({
                     container: document.body,
-                    mode: 'export',
+                    mode: "export",
                     ctx,
-                    slots: party.members
+                    slots: party.members,
                 });
             });
         } else {
-            const textarea = container.querySelector('#text-editor') as HTMLTextAreaElement;
+            const textarea = container.querySelector("#text-editor") as HTMLTextAreaElement;
             let timeout: any;
-            textarea.addEventListener('input', () => {
+            textarea.addEventListener("input", () => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
                     syncFromText(textarea.value);
@@ -103,11 +113,11 @@ export function renderPartyEditor(container: HTMLElement, party: Party, ctx: Par
     };
 
     const renderSlots = () => {
-        const slotsContainer = container.querySelector('#slots-container') as HTMLElement;
+        const slotsContainer = container.querySelector("#slots-container") as HTMLElement;
         if (!slotsContainer) return;
 
         for (let i = 0; i < 6; i++) {
-            const slotWrapper = document.createElement('div');
+            const slotWrapper = document.createElement("div");
             let slot = party.members[i];
             if (!slot) {
                 slot = createEmptySlot();
@@ -119,18 +129,20 @@ export function renderPartyEditor(container: HTMLElement, party: Party, ctx: Par
                 ctx,
                 onUpdate: (updatedSlot) => {
                     party.members[i] = updatedSlot;
-                }
+                },
             });
             slotsContainer.appendChild(slotWrapper);
         }
     };
 
     const syncFromText = (text?: string) => {
-        const content = text || (container.querySelector('#text-editor') as HTMLTextAreaElement)?.value;
+        const content = text || (container.querySelector("#text-editor") as HTMLTextAreaElement)?.value;
         if (content !== undefined) {
             const parsed = parseShowdown(content, ctx);
             // 최대 6마리까지만 채움
-            const newMembers = Array(6).fill(null).map((_, i) => parsed[i] || createEmptySlot());
+            const newMembers = Array(6)
+                .fill(null)
+                .map((_, i) => parsed[i] || createEmptySlot());
             party.members = newMembers;
         }
     };
@@ -140,9 +152,9 @@ export function renderPartyEditor(container: HTMLElement, party: Party, ctx: Par
 
 function exportAll(party: Party, ctx: ParserContext): string {
     return party.members
-        .filter(s => s && s.pokemonId !== 0)
-        .map(s => exportShowdown(s, ctx, 'ko'))
-        .join('\n\n');
+        .filter((s) => s && s.pokemonId !== 0)
+        .map((s) => exportShowdown(s, ctx, "ko"))
+        .join("\n\n");
 }
 
 function createEmptySlot(): PokemonSlot {
@@ -152,6 +164,6 @@ function createEmptySlot(): PokemonSlot {
         evs: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
         ivs: { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
         natureId: 0,
-        level: 100
+        level: 100,
     };
 }

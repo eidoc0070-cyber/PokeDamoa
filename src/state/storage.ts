@@ -2,10 +2,10 @@
  * 로컬 스토리지(localStorage) 관리 유틸리티
  */
 
-export const SETTINGS_KEY = 'pokedamoa_settings';
-export const EXTERNAL_LINKS_KEY = 'pokedamoa_external_links';
-export const PARTIES_KEY = 'pokedamoa_parties';
-const PRESETS_KEY = 'pokedamoa_presets';
+export const SETTINGS_KEY = "pokedamoa_settings";
+export const EXTERNAL_LINKS_KEY = "pokedamoa_external_links";
+export const PARTIES_KEY = "pokedamoa_parties";
+const PRESETS_KEY = "pokedamoa_presets";
 
 export interface TabItem {
     id: string; // 고유 ID (URL 파라미터 등에서 참조)
@@ -15,18 +15,18 @@ export interface TabItem {
 }
 
 export const DEFAULT_TABS: TabItem[] = [
-    { id: 'pokedex', currentName: '📚 정보 도감', isVisible: true, isCustomized: false },
-    { id: 'party-builder', currentName: '🏟️ 파티 빌더', isVisible: true, isCustomized: false },
-    { id: 'calculator', currentName: '🧮 계산기', isVisible: true, isCustomized: false },
-    { id: 'battle-ai', currentName: '🥊 샌드백 AI', isVisible: true, isCustomized: false },
-    { id: 'external-links', currentName: '🔗 외부 링크', isVisible: true, isCustomized: true },
-    { id: 'settings', currentName: '⚙️ 설정', isVisible: true, isCustomized: false },
+    { id: "pokedex", currentName: "📚 정보 도감", isVisible: true, isCustomized: false },
+    { id: "party-builder", currentName: "🏟️ 파티 빌더", isVisible: true, isCustomized: false },
+    { id: "calculator", currentName: "🧮 계산기", isVisible: true, isCustomized: false },
+    { id: "battle-ai", currentName: "🥊 샌드백 AI", isVisible: true, isCustomized: false },
+    { id: "external-links", currentName: "🔗 외부 링크", isVisible: true, isCustomized: true },
+    { id: "settings", currentName: "⚙️ 설정", isVisible: true, isCustomized: false },
 ];
 
 export interface SavedSettings {
     isDarkMode: boolean;
     isCustomMode: boolean;
-    generation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 'champions';
+    generation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | "champions";
     externalLinks?: any[] | undefined; // 외부 링크 데이터 포함 가능
     tabs?: TabItem[] | undefined; // 상단 탭 설정
     visitCount?: number | undefined;
@@ -55,7 +55,7 @@ export function loadSettings(): SavedSettings | null {
     try {
         return JSON.parse(data);
     } catch (e) {
-        console.error('설정 로드 실패:', e);
+        console.error("설정 로드 실패:", e);
         return null;
     }
 }
@@ -71,7 +71,7 @@ export function loadPresets(): Record<string, any> {
     const data = localStorage.getItem(PRESETS_KEY);
     try {
         return data ? JSON.parse(data) : {};
-    } catch (e) {
+    } catch (_e) {
         return {};
     }
 }
@@ -90,7 +90,7 @@ export function loadParties(): any[] {
     const data = localStorage.getItem(PARTIES_KEY);
     try {
         return data ? JSON.parse(data) : [];
-    } catch (e) {
+    } catch (_e) {
         return [];
     }
 }

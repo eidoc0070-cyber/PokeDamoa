@@ -1,29 +1,23 @@
-import { expect, test, describe } from "bun:test"; // vitest -> bun:test
-import * as fs from "fs";
-import * as path from "path";
-import { FIELD_EFFECTS } from "../../src/data/field-data.js";
+import { describe, expect, test } from "bun:test"; // vitest -> bun:test
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { FieldEffect } from "../../src/data/field-data.js";
+import { FIELD_EFFECTS } from "../../src/data/field-data.js";
 
 describe("도감 데이터 및 환경 설정 테스트", () => {
-    
     test("필드 데이터(FIELD_EFFECTS)가 올바르게 정의되어 있는가", () => {
         expect(FIELD_EFFECTS.length).toBeGreaterThan(0);
-        const sun = FIELD_EFFECTS.find((e: FieldEffect) => e.id === 'sun');
+        const sun = FIELD_EFFECTS.find((e: FieldEffect) => e.id === "sun");
         expect(sun).toBeDefined();
-        expect(sun?.nameKo).toBe('쾌청');
-        expect(sun?.category).toBe('weather');
+        expect(sun?.nameKo).toBe("쾌청");
+        expect(sun?.category).toBe("weather");
     });
 
     test("생성된 JSON 데이터 파일들이 존재하는가", () => {
         const publicPath = path.resolve(__dirname, "../../public/data");
-        const files = [
-            "pokedex-data.json",
-            "moves-data.json",
-            "abilities-data.json",
-            "items-data.json"
-        ];
+        const files = ["pokedex-data.json", "moves-data.json", "abilities-data.json", "items-data.json"];
 
-        files.forEach(file => {
+        files.forEach((file) => {
             const exists = fs.existsSync(path.join(publicPath, file));
             expect(exists).toBe(true);
         });
@@ -31,7 +25,7 @@ describe("도감 데이터 및 환경 설정 테스트", () => {
 
     test("데이터 파일의 기본 구조가 유효한가", () => {
         const publicPath = path.resolve(__dirname, "../../public/data");
-        
+
         // 기술 데이터 확인
         const movesPath = path.join(publicPath, "moves-data.json");
         if (fs.existsSync(movesPath)) {

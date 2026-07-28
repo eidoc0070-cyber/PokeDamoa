@@ -6,10 +6,10 @@ export function renderAccordion(options: {
     isOpen?: boolean;
     borderColor?: string;
 }): string {
-    const { id, title, icon = '', contentHtml, isOpen = true, borderColor = '#ddd' } = options;
-    const displayStyle = isOpen ? 'block' : 'none';
-    const chevron = isOpen ? '▲' : '▼';
-    
+    const { id, title, icon = "", contentHtml, isOpen = true, borderColor = "#ddd" } = options;
+    const displayStyle = isOpen ? "block" : "none";
+    const chevron = isOpen ? "▲" : "▼";
+
     return `
         <div class="accordion-item" style="border: 2px solid ${borderColor}; border-radius: 12px; margin-bottom: 16px; background: var(--surface-color, #fff); overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
             <div class="accordion-header" 
@@ -21,7 +21,7 @@ export function renderAccordion(options: {
                  " 
                  style="padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: rgba(0,0,0,0.02); user-select: none;">
                 <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: ${borderColor}; font-size: 1.1rem;">
-                    ${icon ? `<span>${icon}</span>` : ''} ${title}
+                    ${icon ? `<span>${icon}</span>` : ""} ${title}
                 </h3>
                 <span class="chevron" style="color: #888; font-size: 0.9rem; font-weight: bold; padding: 4px;">${chevron}</span>
             </div>

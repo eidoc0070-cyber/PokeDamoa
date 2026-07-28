@@ -3,30 +3,118 @@
  */
 
 const CHO = [
-    'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+    "ㄱ",
+    "ㄲ",
+    "ㄴ",
+    "ㄷ",
+    "ㄸ",
+    "ㄹ",
+    "ㅁ",
+    "ㅂ",
+    "ㅃ",
+    "ㅅ",
+    "ㅆ",
+    "ㅇ",
+    "ㅈ",
+    "ㅉ",
+    "ㅊ",
+    "ㅋ",
+    "ㅌ",
+    "ㅍ",
+    "ㅎ",
 ];
 const JUNG = [
-    'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'
+    "ㅏ",
+    "ㅐ",
+    "ㅑ",
+    "ㅒ",
+    "ㅓ",
+    "ㅔ",
+    "ㅕ",
+    "ㅖ",
+    "ㅗ",
+    "ㅘ",
+    "ㅙ",
+    "ㅚ",
+    "ㅛ",
+    "ㅜ",
+    "ㅝ",
+    "ㅞ",
+    "ㅟ",
+    "ㅠ",
+    "ㅡ",
+    "ㅢ",
+    "ㅣ",
 ];
 const JONG = [
-    '', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+    "",
+    "ㄱ",
+    "ㄲ",
+    "ㄳ",
+    "ㄴ",
+    "ㄵ",
+    "ㄶ",
+    "ㄷ",
+    "ㄹ",
+    "ㄺ",
+    "ㄻ",
+    "ㄼ",
+    "ㄽ",
+    "ㄾ",
+    "ㄿ",
+    "ㅀ",
+    "ㅁ",
+    "ㅂ",
+    "ㅄ",
+    "ㅅ",
+    "ㅆ",
+    "ㅇ",
+    "ㅈ",
+    "ㅊ",
+    "ㅋ",
+    "ㅌ",
+    "ㅍ",
+    "ㅎ",
 ];
 
 /**
  * 복합 자모를 개별 자모로 분리합니다. (예: ㄳ -> ㄱㅅ, ㄵ -> ㄴㅈ)
  */
 const COMPLEX_JAMO: Record<string, string> = {
-    'ㄲ': 'ㄱㄱ', 'ㄸ': 'ㄷㄷ', 'ㅃ': 'ㅂㅂ', 'ㅆ': 'ㅅㅅ', 'ㅉ': 'ㅈㅈ',
-    'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ',
-    'ㅘ': 'ㅗㅏ', 'ㅙ': 'ㅗㅐ', 'ㅚ': 'ㅗㅣ', 'ㅝ': 'ㅜㅓ', 'ㅞ': 'ㅜㅔ', 'ㅟ': 'ㅜㅣ', 'ㅢ': 'ㅡㅣ'
+    ㄲ: "ㄱㄱ",
+    ㄸ: "ㄷㄷ",
+    ㅃ: "ㅂㅂ",
+    ㅆ: "ㅅㅅ",
+    ㅉ: "ㅈㅈ",
+    ㄳ: "ㄱㅅ",
+    ㄵ: "ㄴㅈ",
+    ㄶ: "ㄴㅎ",
+    ㄺ: "ㄹㄱ",
+    ㄻ: "ㄹㅁ",
+    ㄼ: "ㄹㅂ",
+    ㄽ: "ㄹㅅ",
+    ㄾ: "ㄹㅌ",
+    ㄿ: "ㄹㅍ",
+    ㅀ: "ㄹㅎ",
+    ㅄ: "ㅂㅅ",
+    ㅘ: "ㅗㅏ",
+    ㅙ: "ㅗㅐ",
+    ㅚ: "ㅗㅣ",
+    ㅝ: "ㅜㅓ",
+    ㅞ: "ㅜㅔ",
+    ㅟ: "ㅜㅣ",
+    ㅢ: "ㅡㅣ",
 };
 
 /**
  * 문자열을 자소 단위로 완전히 분해합니다.
  */
-export function disassembleHangul(str: string, fullyDecompose: boolean = false): { disassembled: string; initialConsonants: string } {
-    let disassembled = '';
-    let initialConsonants = '';
+export function disassembleHangul(
+    str: string,
+    fullyDecompose: boolean = false,
+): { disassembled: string; initialConsonants: string } {
+    let disassembled = "";
+    let initialConsonants = "";
 
     const normalized = str.toLowerCase();
 
@@ -52,13 +140,11 @@ export function disassembleHangul(str: string, fullyDecompose: boolean = false):
 
             disassembled += cho + jung + jong;
             initialConsonants += cho;
-        } 
-        else if (charCode >= 0x3131 && charCode <= 0x318E) {
-            const decomposed = fullyDecompose ? (COMPLEX_JAMO[char] || char) : char;
+        } else if (charCode >= 0x3131 && charCode <= 0x318e) {
+            const decomposed = fullyDecompose ? COMPLEX_JAMO[char] || char : char;
             disassembled += decomposed;
             initialConsonants += decomposed;
-        } 
-        else {
+        } else {
             disassembled += char;
             initialConsonants += char;
         }
@@ -101,21 +187,21 @@ export function getLevenshteinDistance(a: string, b: string, limit: number): num
 export function hangulIncludes(target: string, query: string, allowFuzzy: boolean = true): boolean {
     const term = query.toLowerCase().trim();
     if (!term) return true;
-    
+
     // searchKey 형태(이름|영문|분해|초성)인지 확인
     let nameKo = target;
-    let nameEn = '';
-    let disassembled = '';
-    let chosung = '';
-    let dexNumber = '';
-    
-    if (target.includes('|')) {
-        const parts = target.split('|');
+    let nameEn = "";
+    let disassembled = "";
+    let chosung = "";
+    let dexNumber = "";
+
+    if (target.includes("|")) {
+        const parts = target.split("|");
         nameKo = parts[0]!;
-        nameEn = parts[1] || '';
-        disassembled = parts[2] || '';
-        chosung = parts[3] || '';
-        dexNumber = parts[4] || '';
+        nameEn = parts[1] || "";
+        disassembled = parts[2] || "";
+        chosung = parts[3] || "";
+        dexNumber = parts[4] || "";
     }
 
     const targetLower = nameKo.toLowerCase();
@@ -123,8 +209,8 @@ export function hangulIncludes(target: string, query: string, allowFuzzy: boolea
 
     // 1. 단순 포함 (한글/영문/도감번호)
     if (targetLower.includes(termLower)) return true;
-    if (nameEn && nameEn.toLowerCase().includes(termLower)) return true;
-    if (dexNumber && dexNumber.includes(termLower)) return true;
+    if (nameEn?.toLowerCase().includes(termLower)) return true;
+    if (dexNumber?.includes(termLower)) return true;
 
     // 2. 일반 분해 비교
     const queryInfo = disassembleHangul(term);
@@ -152,11 +238,11 @@ export function hangulIncludes(target: string, query: string, allowFuzzy: boolea
     if (allowFuzzy && term.length >= 2) {
         const queryDis = queryInfo.disassembled;
         const maxDist = Math.max(1, Math.min(2, Math.floor(queryDis.length / 3)));
-        
+
         // 전체 또는 부분 오타 허용 확인
         const dist = getLevenshteinDistance(targetDis, queryDis, maxDist);
         if (dist <= maxDist) return true;
-        
+
         const subDist = getLevenshteinDistance(targetDis.substring(0, queryDis.length), queryDis, maxDist);
         if (subDist <= maxDist) return true;
     }
@@ -175,21 +261,23 @@ export interface SearchResult<T> {
 export function searchFuzzy<T>(
     data: T[],
     query: string,
-    getSearchFields: (item: T) => { nameKo: string; nameEn: string; disassembled: string; chosung: string }
+    getSearchFields: (item: T) => { nameKo: string; nameEn: string; disassembled: string; chosung: string },
 ): SearchResult<T>[] {
     const term = query.toLowerCase().trim();
-    if (!term) return data.map(item => ({ item, score: 0 }));
+    if (!term) return data.map((item) => ({ item, score: 0 }));
 
     const queryInfo = disassembleHangul(term);
     const queryFull = disassembleHangul(term, true).disassembled;
-    const isChosungQuery = term.split('').every(char => CHO.includes(char) || (char >= 'ㄱ' && char <= 'ㅎ' && !JUNG.includes(char)));
+    const isChosungQuery = term
+        .split("")
+        .every((char) => CHO.includes(char) || (char >= "ㄱ" && char <= "ㅎ" && !JUNG.includes(char)));
 
     return data
-        .map(item => {
+        .map((item) => {
             const { nameKo, nameEn, disassembled, chosung } = getSearchFields(item);
             const targetKo = nameKo.toLowerCase();
             const targetEn = nameEn.toLowerCase();
-            
+
             let score = 0;
 
             // 1. 정확한 일치
@@ -197,26 +285,26 @@ export function searchFuzzy<T>(
             // 2. 시작 부분 일치
             else if (targetKo.startsWith(term) || targetEn.startsWith(term)) score = 80;
             // 3. 자소 분리 시작 부분 일치
-            else if (disassembled && disassembled.startsWith(queryInfo.disassembled)) score = 70;
+            else if (disassembled?.startsWith(queryInfo.disassembled)) score = 70;
             // 4. 초성 일치
-            else if (isChosungQuery && chosung && chosung.includes(queryInfo.disassembled)) score = 60;
+            else if (isChosungQuery && chosung?.includes(queryInfo.disassembled)) score = 60;
             // 5. 단순 포함
             else if (targetKo.includes(term) || targetEn.includes(term)) score = 50;
             // 6. 자소 분리 포함
-            else if (disassembled && disassembled.includes(queryInfo.disassembled)) score = 40;
-            
+            else if (disassembled?.includes(queryInfo.disassembled)) score = 40;
+
             // 아직 점수가 없거나 낮은 경우 오타 허용 로직 적용
             if (score < 40 && term.length >= 2) {
                 const queryDis = queryInfo.disassembled;
                 const targetDis = disassembled || disassembleHangul(targetKo).disassembled;
-                
+
                 const maxDist = Math.max(1, Math.min(2, Math.floor(queryDis.length / 3)));
-                
+
                 // 전체 비교
                 const dist = getLevenshteinDistance(targetDis, queryDis, maxDist);
                 if (dist <= maxDist) {
                     score = Math.max(score, 35 - dist);
-                } 
+                }
                 // 부분(앞부분) 비교
                 else {
                     const targetSub = targetDis.substring(0, queryDis.length);
@@ -235,7 +323,6 @@ export function searchFuzzy<T>(
 
             return { item, score };
         })
-        .filter(res => res.score > 0)
+        .filter((res) => res.score > 0)
         .sort((a, b) => b.score - a.score);
 }
-

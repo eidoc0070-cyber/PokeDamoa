@@ -1,15 +1,15 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { mock } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
 GlobalRegistrator.register();
 
 // Common mocks for UI tests
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
     // Mock matchMedia for mobile
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(window, "matchMedia", {
         writable: true,
-        value: mock().mockImplementation(query => ({
-            matches: query.includes('max-width') ? true : false,
+        value: mock().mockImplementation((query) => ({
+            matches: !!query.includes("max-width"),
             media: query,
             onchange: null,
             addListener: mock(),
@@ -19,18 +19,18 @@ if (typeof window !== 'undefined') {
             dispatchEvent: mock(),
         })),
     });
-    
+
     // Mock mobile screen size
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 });
-    Object.defineProperty(window, 'innerHeight', { writable: true, value: 844 });
+    Object.defineProperty(window, "innerWidth", { writable: true, value: 390 });
+    Object.defineProperty(window, "innerHeight", { writable: true, value: 844 });
 
     // Mock clipboard
     if (!navigator.clipboard) {
-        Object.defineProperty(navigator, 'clipboard', {
+        Object.defineProperty(navigator, "clipboard", {
             value: {
                 writeText: mock().mockResolvedValue(undefined),
             },
-            configurable: true
+            configurable: true,
         });
     }
 

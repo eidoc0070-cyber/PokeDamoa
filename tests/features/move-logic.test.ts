@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { getLearnableMoveIds, getSortedMovesForPoke, getMoveItemStyle, renderMoveItemExtra } from "../../src/utils/pokemon-math.js";
+import {
+    getLearnableMoveIds,
+    getMoveItemStyle,
+    getSortedMovesForPoke,
+    renderMoveItemExtra,
+} from "../../src/utils/pokemon-math.js";
 
 describe("Move Logic Utilities", () => {
     const mockPoke = {
@@ -7,15 +12,15 @@ describe("Move Logic Utilities", () => {
         nameKo: "이상해씨",
         learnsets: {
             1: [1, 2, 3], // 몸통박치기, 덩굴채찍, 독가루
-            9: [1, 2, 4]  // 몸통박치기, 덩굴채찍, 리프스톰
-        }
+            9: [1, 2, 4], // 몸통박치기, 덩굴채찍, 리프스톰
+        },
     };
 
     const mockMoves = [
         { id: 1, nameKo: "몸통박치기", type: "normal", power: 40 },
         { id: 3, nameKo: "독가루", type: "poison", power: 0 },
         { id: 4, nameKo: "리프스톰", type: "grass", power: 130 },
-        { id: 5, nameKo: "지진", type: "ground", power: 100 }
+        { id: 5, nameKo: "지진", type: "ground", power: 100 },
     ];
 
     describe("getLearnableMoveIds", () => {
@@ -44,7 +49,7 @@ describe("Move Logic Utilities", () => {
             // Gen 1: 1, 3은 배움 / 4, 5는 못 배움
             // 이름순 정렬: "독가루"(3) < "몸통박치기"(1) (한글 가나다순)
             const sorted = getSortedMovesForPoke(mockMoves, mockPoke, 1);
-            
+
             // 배울 수 있는 기술이 앞쪽에 위치해야 함 (3, 1 순서)
             expect(sorted[0].id).toBe(3); // 독가루 (배움, 가나다순 위)
             expect(sorted[1].id).toBe(1); // 몸통박치기 (배움, 가나다순 아래)
@@ -56,9 +61,9 @@ describe("Move Logic Utilities", () => {
 
         it("should apply filter function correctly", () => {
             // 위력이 0보다 큰 기술만 필터링
-            const sorted = getSortedMovesForPoke(mockMoves, mockPoke, 1, m => m.power > 0);
+            const sorted = getSortedMovesForPoke(mockMoves, mockPoke, 1, (m) => m.power > 0);
             expect(sorted.length).toBe(3);
-            expect(sorted.find(m => m.id === 3)).toBeUndefined(); // 독가루 제외
+            expect(sorted.find((m) => m.id === 3)).toBeUndefined(); // 독가루 제외
         });
     });
 

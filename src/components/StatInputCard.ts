@@ -10,7 +10,7 @@ export function renderStatInputCard(options: {
     realVal: number;
 }): string {
     const { statKey, statName, statColor, base, iv, ev, naturePlus, natureMinus, realVal } = options;
-    
+
     // 2열 그리드에 최적화된 콤팩트한 디자인
     return `
         <div class="stat-card" style="border-left: 4px solid ${statColor}; background: var(--surface-color, #fff); border-radius: 10px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
@@ -34,18 +34,22 @@ export function renderStatInputCard(options: {
                 </div>
             </div>
             
-            ${statKey === 'hp' ? '' : `
+            ${
+                statKey === "hp"
+                    ? ""
+                    : `
             <div style="display:flex; align-items:center; gap: 8px; font-size:0.8rem; background:rgba(0,0,0,0.02); padding:4px 6px; border-radius:6px; justify-content: space-around;">
                 <label style="display:flex; align-items:center; gap:3px; cursor:pointer;">
-                    <input type="radio" name="nature-plus" value="${statKey}" ${naturePlus ? 'checked' : ''} style="width:14px; height:14px; accent-color: #d32f2f;" /> 
+                    <input type="radio" name="nature-plus" value="${statKey}" ${naturePlus ? "checked" : ""} style="width:14px; height:14px; accent-color: #d32f2f;" /> 
                     <span style="color:#d32f2f; font-weight:bold;">+</span>
                 </label>
                 <label style="display:flex; align-items:center; gap:3px; cursor:pointer;">
-                    <input type="radio" name="nature-minus" value="${statKey}" ${natureMinus ? 'checked' : ''} style="width:14px; height:14px; accent-color: #1976d2;" /> 
+                    <input type="radio" name="nature-minus" value="${statKey}" ${natureMinus ? "checked" : ""} style="width:14px; height:14px; accent-color: #1976d2;" /> 
                     <span style="color:#1976d2; font-weight:bold;">-</span>
                 </label>
             </div>
-            `}
+            `
+            }
         </div>
     `;
 }

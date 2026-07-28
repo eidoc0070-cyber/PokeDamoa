@@ -1,6 +1,6 @@
-import { fetchItemsData } from '../../../data/pokeapi.js';
-import type { ItemData } from '../../../data/pokeapi.js';
-import { hangulIncludes } from '../../../utils/hangul.js';
+import type { ItemData } from "../../../data/pokeapi.js";
+import { fetchItemsData } from "../../../data/pokeapi.js";
+import { hangulIncludes } from "../../../utils/hangul.js";
 
 export async function renderItemList(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `<div style="padding:40px; text-align:center;">아이템 데이터를 불러오는 중입니다...</div>`;
@@ -10,7 +10,7 @@ export async function renderItemList(container: HTMLElement): Promise<() => void
         let filteredData = fullData;
         let pagedData: ItemData[] = [];
         const ITEMS_PER_PAGE = 60; // 2, 3, 4, 5, 6열 그리드 모두에 자연스럽게 대응 가능한 수치
-        let searchTerm = '';
+        let searchTerm = "";
 
         container.innerHTML = `
             <div style="margin-bottom: 20px; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px;">
@@ -22,9 +22,9 @@ export async function renderItemList(container: HTMLElement): Promise<() => void
             </div>
         `;
 
-        const listEl = container.querySelector('#item-list')!;
-        const searchInput = container.querySelector('#item-search') as HTMLInputElement;
-        const btnLoadMore = container.querySelector('#btn-load-more') as HTMLButtonElement;
+        const listEl = container.querySelector("#item-list")!;
+        const searchInput = container.querySelector("#item-search") as HTMLInputElement;
+        const btnLoadMore = container.querySelector("#btn-load-more") as HTMLButtonElement;
 
         const createItemHTML = (i: ItemData) => `
             <div class="item-card" style="background: var(--card-bg, #fff); border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 12px; align-items: flex-start;">
@@ -35,34 +35,45 @@ export async function renderItemList(container: HTMLElement): Promise<() => void
                         <span style="font-size: 0.7rem; color: #aaa;">ID: ${i.id}</span>
                     </div>
                     <div style="font-size: 0.85rem; color: #333; line-height: 1.4; background: rgba(var(--primary-rgb), 0.05); padding: 8px; border-radius: 6px;">
-                        ${i.flavorText || i.effect || '설명이 없습니다.'}
+                        ${i.flavorText || i.effect || "설명이 없습니다."}
                     </div>
-                    ${i.effect && i.flavorText ? `
+                    ${
+                        i.effect && i.flavorText
+                            ? `
                         <details style="font-size: 0.7rem; color: #777; cursor: pointer; margin-top: 5px;">
                             <summary>상세 효과 (Technical)</summary>
                             <div style="padding: 4px; border-top: 1px dashed #ddd; margin-top: 4px;">${i.effect}</div>
                         </details>
-                    ` : ''}
+                    `
+                            : ""
+                    }
                 </div>
             </div>
         `;
 
         const updateList = () => {
-            filteredData = fullData.filter(i => !searchTerm || hangulIncludes(i.searchKey, searchTerm));
+            filteredData = fullData.filter((i) => !searchTerm || hangulIncludes(i.searchKey, searchTerm));
             pagedData = filteredData.slice(0, ITEMS_PER_PAGE);
-            listEl.innerHTML = pagedData.map(createItemHTML).join('');
-            (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
+            listEl.innerHTML = pagedData.map(createItemHTML).join("");
+            (container.querySelector("#load-more-container") as HTMLElement).style.display =
+                pagedData.length < filteredData.length ? "block" : "none";
         };
 
-        searchInput.addEventListener('input', (e) => { searchTerm = (e.target as HTMLInputElement).value; updateList(); });
-        btnLoadMore.addEventListener('click', () => {
+        searchInput.addEventListener("input", (e) => {
+            searchTerm = (e.target as HTMLInputElement).value;
+            updateList();
+        });
+        btnLoadMore.addEventListener("click", () => {
             const next = filteredData.slice(pagedData.length, pagedData.length + ITEMS_PER_PAGE);
             pagedData.push(...next);
-            listEl.insertAdjacentHTML('beforeend', next.map(createItemHTML).join(''));
-            (container.querySelector('#load-more-container') as HTMLElement).style.display = pagedData.length < filteredData.length ? 'block' : 'none';
+            listEl.insertAdjacentHTML("beforeend", next.map(createItemHTML).join(""));
+            (container.querySelector("#load-more-container") as HTMLElement).style.display =
+                pagedData.length < filteredData.length ? "block" : "none";
         });
 
         updateList();
-    } catch(err) { container.innerHTML = `<p>로드 실패: ${err}</p>`; }
+    } catch (err) {
+        container.innerHTML = `<p>로드 실패: ${err}</p>`;
+    }
     return () => {};
 }

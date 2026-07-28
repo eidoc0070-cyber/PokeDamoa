@@ -1,12 +1,12 @@
-import { fetchPokedexData, fetchAbilitiesData, fetchMovesData } from '../../../data/pokeapi.js';
-import type { PokemonData } from '../../../data/pokeapi.js';
-import { hangulIncludes } from '../../../utils/hangul.js';
-import { globalStore } from '../../../state/store.js';
-import { getStatsForGen, getTypesForGen, getAbilitiesForGen } from '../../../utils/pokemon-math.js';
-import { createPokemonCard } from '../../../components/PokemonCard.js';
-import { renderPokemonModalContent } from '../../../components/PokemonModal.js';
-import { createFilterPanelHTML, initFilterPanel } from '../../../components/FilterPanel.js';
-import type { FilterState } from '../../../components/FilterPanel.js';
+import type { FilterState } from "../../../components/FilterPanel.js";
+import { createFilterPanelHTML, initFilterPanel } from "../../../components/FilterPanel.js";
+import { createPokemonCard } from "../../../components/PokemonCard.js";
+import { renderPokemonModalContent } from "../../../components/PokemonModal.js";
+import type { PokemonData } from "../../../data/pokeapi.js";
+import { fetchAbilitiesData, fetchMovesData, fetchPokedexData } from "../../../data/pokeapi.js";
+import { globalStore } from "../../../state/store.js";
+import { hangulIncludes } from "../../../utils/hangul.js";
+import { getAbilitiesForGen, getStatsForGen, getTypesForGen } from "../../../utils/pokemon-math.js";
 
 export async function renderPokemonList(container: HTMLElement): Promise<() => void> {
     container.innerHTML = `
@@ -20,14 +20,14 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
         const [fullData, abilitiesData, movesData] = await Promise.all([
             fetchPokedexData(),
             fetchAbilitiesData(),
-            fetchMovesData()
+            fetchMovesData(),
         ]);
 
         let filteredData: PokemonData[] = [];
         let pagedData: PokemonData[] = [];
-        let currentPage = 1;
+        let _currentPage = 1;
         const ITEMS_PER_PAGE = 48;
-        
+
         let filterState: FilterState;
 
         container.innerHTML = `
@@ -51,44 +51,46 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
             </div>
         `;
 
-        const gridEl = container.querySelector('#pokedex-grid')!;
-        const loadMoreContainer = container.querySelector('#load-more-container') as HTMLElement;
-        const modal = container.querySelector('#poke-modal') as HTMLElement;
-        const modalClose = container.querySelector('#modal-close') as HTMLElement;
-        const modalContent = container.querySelector('#modal-content') as HTMLElement;
+        const gridEl = container.querySelector("#pokedex-grid")!;
+        const loadMoreContainer = container.querySelector("#load-more-container") as HTMLElement;
+        const modal = container.querySelector("#poke-modal") as HTMLElement;
+        const modalClose = container.querySelector("#modal-close") as HTMLElement;
+        const modalContent = container.querySelector("#modal-content") as HTMLElement;
 
         const checkLoadMoreVisibility = () => {
-            loadMoreContainer.style.display = pagedData.length < filteredData.length ? 'block' : 'none';
+            loadMoreContainer.style.display = pagedData.length < filteredData.length ? "block" : "none";
         };
 
         const openModal = (id: number) => {
-            const p = fullData.find(x => x.id === id);
+            const p = fullData.find((x) => x.id === id);
             if (!p) return;
             modalContent.innerHTML = renderPokemonModalContent(p, abilitiesData);
-            modal.style.display = 'flex';
+            modal.style.display = "flex";
         };
 
         const updateList = () => {
             if (!filterState) return;
 
             const currentGen = globalStore.getState().generation;
-            const targetGen = typeof currentGen === 'number' ? currentGen : 9;
+            const targetGen = typeof currentGen === "number" ? currentGen : 9;
 
-            filteredData = fullData.filter(p => {
+            filteredData = fullData.filter((p) => {
                 if (p.genId > targetGen) return false;
                 if (filterState.searchTerm && !hangulIncludes(p.searchKey, filterState.searchTerm)) return false;
                 if (!filterState.showAllForms && !p.isDefault) return false;
 
                 const pTypes = getTypesForGen(p, targetGen);
-                if (filterState.filterTypes[0] !== 'all' && !pTypes.includes(filterState.filterTypes[0] as any)) return false;
-                if (filterState.filterTypes[1] !== 'all' && !pTypes.includes(filterState.filterTypes[1] as any)) return false;
+                if (filterState.filterTypes[0] !== "all" && !pTypes.includes(filterState.filterTypes[0] as any))
+                    return false;
+                if (filterState.filterTypes[1] !== "all" && !pTypes.includes(filterState.filterTypes[1] as any))
+                    return false;
 
-                if (filterState.filterAbility !== 'all') {
+                if (filterState.filterAbility !== "all") {
                     const pAbilities = getAbilitiesForGen(p, targetGen);
                     if (!pAbilities.some((a: any) => a.id === filterState.filterAbility)) return false;
                 }
 
-                if (filterState.filterMove !== 'all') {
+                if (filterState.filterMove !== "all") {
                     const learnset = p.learnsets[targetGen] || [];
                     if (!learnset.includes(filterState.filterMove)) return false;
                 }
@@ -103,10 +105,11 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
                 return true;
             });
 
-            currentPage = 1;
+            _currentPage = 1;
             pagedData = filteredData.slice(0, ITEMS_PER_PAGE);
-            gridEl.innerHTML = pagedData.map(createPokemonCard).join('');
-            (container.querySelector('#empty-msg') as HTMLElement).style.display = pagedData.length === 0 ? 'block' : 'none';
+            gridEl.innerHTML = pagedData.map(createPokemonCard).join("");
+            (container.querySelector("#empty-msg") as HTMLElement).style.display =
+                pagedData.length === 0 ? "block" : "none";
             checkLoadMoreVisibility();
         };
 
@@ -114,37 +117,44 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
             const nextItems = filteredData.slice(pagedData.length, pagedData.length + ITEMS_PER_PAGE);
             if (nextItems.length > 0) {
                 pagedData.push(...nextItems);
-                gridEl.insertAdjacentHTML('beforeend', nextItems.map(createPokemonCard).join(''));
+                gridEl.insertAdjacentHTML("beforeend", nextItems.map(createPokemonCard).join(""));
                 checkLoadMoreVisibility();
             }
         };
 
         // 필터 패널 초기화
         const filterPanel = initFilterPanel(
-            container.querySelector('#filter-panel-container')!,
+            container.querySelector("#filter-panel-container")!,
             movesData,
             (newState) => {
                 filterState = newState;
                 updateList();
-            }
+            },
         );
         filterState = filterPanel.getState();
 
         // IntersectionObserver for Infinite Scroll
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0]?.isIntersecting && pagedData.length < filteredData.length) {
-                loadMore();
-            }
-        }, { threshold: 0.1 });
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting && pagedData.length < filteredData.length) {
+                    loadMore();
+                }
+            },
+            { threshold: 0.1 },
+        );
         observer.observe(loadMoreContainer);
 
         // 이벤트 리스너
-        gridEl.addEventListener('click', (e) => {
-            const card = (e.target as HTMLElement).closest('.poke-card');
-            if (card) openModal(parseInt(card.getAttribute('data-poke-id') || '0'));
+        gridEl.addEventListener("click", (e) => {
+            const card = (e.target as HTMLElement).closest(".poke-card");
+            if (card) openModal(parseInt(card.getAttribute("data-poke-id") || "0", 10));
         });
-        modalClose.addEventListener('click', () => { modal.style.display = 'none'; });
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        modalClose.addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) modal.style.display = "none";
+        });
 
         // 전역 설정 변경 구독
         const unsubscribeStore = globalStore.subscribe(() => {
@@ -157,8 +167,7 @@ export async function renderPokemonList(container: HTMLElement): Promise<() => v
             unsubscribeStore();
             observer.disconnect();
         };
-
-    } catch(err) {
+    } catch (err) {
         container.innerHTML = `<p style="color:red; padding: 20px;">도감 로드 실패: ${err}</p>`;
         return () => {};
     }

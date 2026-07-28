@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { createAutocomplete } from "../../src/components/SearchAutocomplete.js";
 
 describe("SearchAutocomplete", () => {
@@ -18,9 +18,9 @@ describe("SearchAutocomplete", () => {
             data,
             getSearchKey: (d: any) => d.search,
             getDisplayName: (d: any) => d.name,
-            getDisplaySub: (d: any) => "sub",
+            getDisplaySub: (_d: any) => "sub",
             onSelect: () => {},
-            getItemStyle: () => ({ color: "red" })
+            getItemStyle: () => ({ color: "red" }),
         });
 
         const input = container.querySelector("input") as HTMLInputElement;
@@ -32,7 +32,7 @@ describe("SearchAutocomplete", () => {
 
         // 옵션 변경: 색상을 파란색으로
         autocomplete.setOptions({
-            getItemStyle: () => ({ color: "blue" })
+            getItemStyle: () => ({ color: "blue" }),
         });
 
         // 다시 렌더링 유도
@@ -50,9 +50,9 @@ describe("SearchAutocomplete", () => {
             data,
             getSearchKey: (d) => d.search,
             getDisplayName: (d) => d.name,
-            getDisplaySub: (d) => "sub",
+            getDisplaySub: (_d) => "sub",
             onSelect: () => {},
-            renderItemExtra: () => `<span class="extra-old">Old</span>`
+            renderItemExtra: () => `<span class="extra-old">Old</span>`,
         });
 
         const input = container.querySelector("input") as HTMLInputElement;
@@ -63,7 +63,7 @@ describe("SearchAutocomplete", () => {
 
         // 옵션 변경
         autocomplete.setOptions({
-            renderItemExtra: () => `<span class="extra-new">New</span>`
+            renderItemExtra: () => `<span class="extra-new">New</span>`,
         });
 
         input.dispatchEvent(new Event("input"));

@@ -5,14 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:data": "bun scripts/build-data.ts",
+    "build:sprites": "bun scripts/update-sprites.ts",
+    "build:assets": "bun run build:data && bun run build:sprites",
+    "build": "tsc --noEmit && bun run build:assets && vite build",
     "preview": "vite preview",
     "test": "bun test",
-    "lint": "biome lint src/ tests/",
+    "test:watch": "bun test --watch",
+    "lint": "biome check src/ tests/",
+    "lint:fix": "biome check --write src/ tests/",
     "format": "biome format --write src/ tests/",
-    "security": "bunx bun-osv-scanner",
-    "build:data": "bun scripts/build-data.ts",
-    "build:sprites": "bun scripts/update-sprites.ts"
+    "security": "bun-osv-scanner",
+    "ready": "bun run format && bun run lint:fix && bun run build && bun run test",
+    "clean": "rm -rf dist node_modules/.vite"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",
