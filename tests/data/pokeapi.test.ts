@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import { preloadAllData, resetPokeapiCache } from "../../src/data/pokeapi.js";
+import { fetchPokedexData, preloadAllData, resetPokeapiCache } from "../../src/data/pokeapi.js";
 
 // In-memory Mock IndexedDB Implementation for testing
 class MockIDBRequest {
@@ -205,5 +205,16 @@ describe("preloadAllData tab-aware caching", () => {
 
         expect(fetchedUrls).not.toContain("/sprites/pokemon/1.webp");
         expect(fetchedUrls).not.toContain("/sprites/items/master-ball.webp");
+    });
+
+    it("should fallback to fetch if IndexedDB cache is empty array despite version match", async () => {
+        resetPokeapiCache();
+        // Simulate IndexedDB returning empty array [] for pokedex_data
+        mockDbInstance.store.data["pokedex_data"] = [];
+
+        await fetchPokedexData();
+
+        const loadedJson = fetchedUrls.filter((url) => url.endsWith(".json"));
+        expect(loadedJson).toContain("/data/pokedex-data.json");
     });
 });
