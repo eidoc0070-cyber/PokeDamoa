@@ -8,7 +8,7 @@
     "build:data": "bun scripts/build-data.ts",
     "build:sprites": "bun scripts/update-sprites.ts",
     "build:assets": "bun run build:data && bun run build:sprites",
-    "build": "tsc --noEmit && bun run build:assets && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "bun test",
     "test:watch": "bun test --watch",
