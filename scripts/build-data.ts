@@ -15,8 +15,7 @@ const DEFAULT_ITEMS_OUTPUT_FILE = path.resolve(__dirname, '../public/data/items-
 function parseCSV(csvDir: string, filename: string) {
   const filePath = path.join(csvDir, filename);
   if (!fs.existsSync(filePath)) {
-    console.warn(`파일을 찾을 수 없습니다: ${filePath}`);
-    return [];
+    throw new Error(`CSV 원본 파일을 찾을 수 없습니다: ${filePath} — data-source가 배포 환경에 없을 수 있습니다.`);
   }
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -483,6 +482,7 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
     console.log('모든 데이터 빌드가 완료되었습니다.');
   } catch (err) {
     console.error("데이터 생성 중 오류 발생:", err);
+    process.exit(1);
   }
 }
 

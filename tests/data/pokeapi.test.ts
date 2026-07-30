@@ -1,81 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { fetchPokedexData, preloadAllData, resetPokeapiCache } from "../../src/data/pokeapi.js";
-
-// In-memory Mock IndexedDB Implementation for testing
-class MockIDBRequest {
-    result: any = null;
-    error: any = null;
-    onsuccess: (() => void) | null = null;
-    onerror: (() => void) | null = null;
-}
-
-class MockIDBTransaction {
-    store: MockIDBObjectStore;
-    constructor(store: MockIDBObjectStore) {
-        this.store = store;
-    }
-    objectStore() {
-        return this.store;
-    }
-}
-
-class MockIDBObjectStore {
-    data: Record<string, any> = {};
-    get(key: string) {
-        const req = new MockIDBRequest();
-        setTimeout(() => {
-            req.result = key in this.data ? this.data[key] : null;
-            if (req.onsuccess) req.onsuccess();
-        }, 0);
-        return req;
-    }
-    put(value: any, key: string) {
-        const req = new MockIDBRequest();
-        setTimeout(() => {
-            this.data[key] = value;
-            req.result = key;
-            if (req.onsuccess) req.onsuccess();
-        }, 0);
-        return req;
-    }
-}
-
-class MockIDBDatabase {
-    store = new MockIDBObjectStore();
-    objectStoreNames = {
-        contains: () => true,
-    };
-    transaction() {
-        return new MockIDBTransaction(this.store);
-    }
-}
-
-const mockDbInstance = new MockIDBDatabase();
+import { saveToDB } from "../../src/utils/storage-db.js";
 
 describe("preloadAllData tab-aware caching", () => {
     let originalFetch: typeof fetch;
-    let originalIndexedDB: typeof indexedDB;
     const fetchedUrls: string[] = [];
 
-    beforeEach(() => {
+    beforeEach(async () => {
         // Reset Pokeapi module cache
         resetPokeapiCache();
 
-        // Clear mock database
-        mockDbInstance.store.data = {};
-
-        // Mock IndexedDB
-        originalIndexedDB = globalThis.indexedDB;
-        globalThis.indexedDB = {
-            open: () => {
-                const req = new MockIDBRequest();
-                setTimeout(() => {
-                    req.result = mockDbInstance;
-                    if (req.onsuccess) req.onsuccess();
-                }, 0);
-                return req as any;
-            },
-        } as any;
+        // Clear fake-indexeddb database (완전히 새로 시작)
+        await new Promise<void>((resolve, reject) => {
+            const openReq = indexedDB.open("PokeDaMoaDB", 1);
+            openReq.onupgradeneeded = () => {
+                const db = openReq.result;
+                if (!db.objectStoreNames.contains("cachedData")) {
+                    db.createObjectStore("cachedData");
+                }
+            };
+            openReq.onsuccess = () => {
+                const db = openReq.result;
+                const tx = db.transaction("cachedData", "readwrite");
+                tx.objectStore("cachedData").clear();
+                tx.oncomplete = () => {
+                    db.close();
+                    resolve();
+                };
+                tx.onerror = () => {
+                    db.close();
+                    resolve();
+                };
+            };
+            openReq.onerror = () => resolve();
+        });
 
         // Mock fetch
         originalFetch = globalThis.fetch;
@@ -113,7 +71,6 @@ describe("preloadAllData tab-aware caching", () => {
 
     afterEach(() => {
         globalThis.fetch = originalFetch;
-        globalThis.indexedDB = originalIndexedDB;
     });
 
     it("should fetch everything when tabs list is not provided", async () => {
@@ -209,8 +166,8 @@ describe("preloadAllData tab-aware caching", () => {
 
     it("should fallback to fetch if IndexedDB cache is empty array despite version match", async () => {
         resetPokeapiCache();
-        // Simulate IndexedDB returning empty array [] for pokedex_data
-        mockDbInstance.store.data["pokedex_data"] = [];
+        // Simulate IndexedDB returning empty array [] for pokedex_data (버전은 일치하지만 데이터가 비어있는 상황)
+        await saveToDB("pokedex_data", []);
 
         await fetchPokedexData();
 
