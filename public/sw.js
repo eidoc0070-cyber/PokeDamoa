@@ -58,49 +58,50 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. 그 외 정적 자원(JS, CSS, HTML, Assets)은 Network-First 전략
-  // 캐시 트래핑을 방지하면서 오프라인 지원을 위해 네트워크 성공 시 캐시를 업데이트함
+  // 2. 그 외 정적 자원(JS, CSS, HTML, Assets)은 Stale-While-Revalidate 전략
+  // 캐시에 저장된 버전이 있으면 즉시 반환하여 오프라인/네트워크 지연 시 즉시 진입(0초)을 보장하고,
+  // 백그라운드에서 네트워크 요청을 수행하여 최신 자원으로 캐시를 갱신함.
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        // 성공적인 응답인 경우 캐시에 저장
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            // 백그라운드 네트워크 요청 실패 (오프라인 등) - 무시함
           });
-        }
-        return networkResponse;
-      })
-      .catch(() => {
-        // 네트워크 실패 시(오프라인 등) 캐시에서 반환
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          
-          // 캐시에도 없는 경우 처리
-          
+
+        // 캐시에 있으면 즉시 캐시 응답 반환, 없으면 네트워크 요청 기다림
+        return cachedResponse || fetchPromise.then((networkResponse) => {
+          if (networkResponse) return networkResponse;
+
           // 외부 폰트(Google Fonts) 요청인 경우 콘솔 에러 방지를 위해 빈 응답 반환
           if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
             return new Response('', { status: 200, statusText: 'OK' });
           }
 
-          // TypeError 방지를 위해 반드시 Response 객체 반환
+          // HTML/네비게이션 요청인 경우 루트 캐시나 기본 오프라인 응답 제공
           if (event.request.mode === 'navigate') {
             return caches.match('/').then((rootResponse) => {
-              return rootResponse || new Response('Offline - No Cache Available', { 
+              return rootResponse || new Response('Offline - No Cache Available', {
                 status: 503,
                 headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' })
               });
             });
           }
-          
-          return new Response('Offline and not cached', { 
-            status: 503, 
+
+          return new Response('Offline and not cached', {
+            status: 503,
             statusText: 'Service Unavailable',
             headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' })
           });
         });
-      })
+      });
+    })
   );
 });
 
