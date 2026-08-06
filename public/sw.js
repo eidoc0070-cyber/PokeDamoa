@@ -1,3 +1,4 @@
+// SW Version Update Test (v1.0.1)
 const CACHE_NAME = 'pokedamoa-v1';
 const STATIC_ASSETS = [
   '/',
