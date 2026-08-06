@@ -16,7 +16,7 @@ describe("preloadAllData tab-aware caching", () => {
         testVersion++; // 매 테스트마다 고유한 버전 번호 부여
 
         // Clear fake-indexeddb database (완전히 새로 시작)
-        await new Promise<void>((resolve, reject) => {
+        await new Promise<void>((resolve, _reject) => {
             const openReq = indexedDB.open("PokeDaMoaDB", 1);
             openReq.onupgradeneeded = () => {
                 const db = openReq.result;
