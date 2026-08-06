@@ -1,6 +1,5 @@
 [test]
 preload = ["./tests/setup.ts"]
-parallel = 1  # fake-indexeddb 전역 상태 공유로 인한 레이스 컨디션 방지
 
 [install]
 minimumReleaseAge = 604800
