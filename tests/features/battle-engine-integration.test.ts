@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { executeTurn } from "../../src/features/battle-ai/engine.js";
 import type { BattleAction, BattlePokemon, BattleState } from "../../src/features/battle-ai/types.js";
 
@@ -30,8 +30,10 @@ const createMockPokemon = (id: number, name: string, types: string[], spe: numbe
 
 describe("Battle Engine Integration Tests (Refactored)", () => {
     let initialState: BattleState;
+    let randomSpy: any;
 
     beforeEach(() => {
+        randomSpy = spyOn(Math, "random").mockReturnValue(0.5);
         initialState = {
             player: {
                 name: "Player",
@@ -50,6 +52,10 @@ describe("Battle Engine Integration Tests (Refactored)", () => {
             logs: [],
             isFinished: false,
         };
+    });
+
+    afterEach(() => {
+        randomSpy?.mockRestore();
     });
 
     it("should determine turn order by speed when priorities are equal", () => {

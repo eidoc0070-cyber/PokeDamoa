@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import type { MoveData, PokemonData } from "../../src/data/pokeapi.js";
 import { executeTurn } from "../../src/features/battle-ai/engine.js";
 import type { BattlePokemon, BattleState, EffectTag } from "../../src/features/battle-ai/types.js";
@@ -59,6 +59,16 @@ function createTestPokemon(name: string, overrides: Partial<BattlePokemon> = {})
 }
 
 describe("Advanced Battle Engine Tests", () => {
+    let randomSpy: any;
+
+    beforeEach(() => {
+        randomSpy = spyOn(Math, "random").mockReturnValue(0.5);
+    });
+
+    afterEach(() => {
+        randomSpy?.mockRestore();
+    });
+
     describe("Turn Order & Priority", () => {
         it("Switch should have higher priority than moves", () => {
             const playerPoke = createTestPokemon("Player", {

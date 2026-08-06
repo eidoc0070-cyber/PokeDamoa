@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import type { MoveData, PokemonData } from "../../src/data/pokeapi.js";
 import { executeTurn } from "../../src/features/battle-ai/engine.js";
 import type { BattleAction, BattlePokemon, BattleState, EffectTag } from "../../src/features/battle-ai/types.js";
@@ -58,6 +58,15 @@ function createTestPokemon(name: string, effectTags: EffectTag[] = []): BattlePo
 }
 
 describe("Battle Engine V2 Integration (Data-Driven)", () => {
+    let randomSpy: any;
+
+    beforeEach(() => {
+        randomSpy = spyOn(Math, "random").mockReturnValue(0.5);
+    });
+
+    afterEach(() => {
+        randomSpy?.mockRestore();
+    });
     it("should handle onEntry effect (Intimidate)", () => {
         const intimidateTag: EffectTag = {
             id: "intimidate",
@@ -326,16 +335,13 @@ describe("Battle Engine V2 Integration (Data-Driven)", () => {
             };
 
             // Math.random을 모킹하여 25% 이하의 값이 나오게 함 (마비 발동)
-            const originalRandom = Math.random;
-            Math.random = () => 0.1; // 10%
+            randomSpy.mockReturnValue(0.1); // 10%
 
             const nextState = executeTurn(
                 state,
                 { type: "move", side: "player", moveIdx: 0 },
                 { type: "move", side: "opponent", moveIdx: 0 },
             );
-
-            Math.random = originalRandom; // 원복
 
             expect(nextState.logs.some((l) => l.message.includes("Paralyzed은(는) 몸이 저려 움직일 수 없다!"))).toBe(
                 true,

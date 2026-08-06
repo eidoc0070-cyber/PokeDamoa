@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import type { MoveData, PokemonData } from "../../src/data/pokeapi.js";
 import { executeTurn } from "../../src/features/battle-ai/engine.js";
 import type { BattlePokemon, BattleState, EffectTag } from "../../src/features/battle-ai/types.js";
@@ -45,6 +45,16 @@ function createPoke(name: string, moves: MoveData[] = [], effectTags: EffectTag[
 }
 
 describe("Advanced Battle Engine V2 Mechanics (Accuracy, Drain, Recoil, Statuses)", () => {
+    let randomSpy: any;
+
+    beforeEach(() => {
+        randomSpy = spyOn(Math, "random").mockReturnValue(0.5);
+    });
+
+    afterEach(() => {
+        randomSpy?.mockRestore();
+    });
+
     it("should handle drain effect correctly", () => {
         const drainMove: MoveData = {
             id: 10,
