@@ -5,10 +5,15 @@ import { saveToDB } from "../../src/utils/storage-db.js";
 describe("preloadAllData tab-aware caching", () => {
     let originalFetch: typeof fetch;
     const fetchedUrls: string[] = [];
+    // 매 테스트마다 단조증가하는 버전 카운터.
+    // Date.now() 대신 사용하면 동일 ms 내 복수 테스트 실행 시에도 버전이 절대 충돌하지 않으며,
+    // DB에 저장된 이전 버전과도 일치하지 않아 isVersionMatch가 항상 false가 됩니다.
+    let testVersion = 0;
 
     beforeEach(async () => {
         // Reset Pokeapi module cache
         resetPokeapiCache();
+        testVersion++; // 매 테스트마다 고유한 버전 번호 부여
 
         // Clear fake-indexeddb database (완전히 새로 시작)
         await new Promise<void>((resolve, reject) => {
@@ -45,7 +50,9 @@ describe("preloadAllData tab-aware caching", () => {
 
             let responseContent = "[]";
             if (urlStr.includes("version.json")) {
-                responseContent = JSON.stringify({ version: Date.now() });
+                // testVersion: 매 beforeEach마다 증가하는 고유 값.
+                // DB에 저장된 이전 버전과 절대 일치하지 않으므로 isVersionMatch는 항상 false.
+                responseContent = JSON.stringify({ version: testVersion });
             } else if (urlStr.includes("pokedex-data.json")) {
                 responseContent = JSON.stringify([{ id: 1, nameEn: "bulbasaur" }]);
             } else if (urlStr.includes("items-data.json")) {
@@ -74,7 +81,6 @@ describe("preloadAllData tab-aware caching", () => {
     });
 
     it("should fetch everything when tabs list is not provided", async () => {
-        resetPokeapiCache();
         await preloadAllData();
 
         const loadedJson = fetchedUrls.filter((url) => url.endsWith(".json"));
@@ -90,7 +96,6 @@ describe("preloadAllData tab-aware caching", () => {
     });
 
     it("should skip specific datasets and sprites if their corresponding tabs are hidden", async () => {
-        resetPokeapiCache();
         const mockTabs = [
             { id: "pokedex", isVisible: false },
             { id: "party-builder", isVisible: false },
@@ -115,7 +120,6 @@ describe("preloadAllData tab-aware caching", () => {
     });
 
     it("should download moves and pokedex but skip sprites when only calculator tab is active", async () => {
-        resetPokeapiCache();
         const mockTabs = [
             { id: "pokedex", isVisible: false },
             { id: "party-builder", isVisible: false },
@@ -140,7 +144,6 @@ describe("preloadAllData tab-aware caching", () => {
     });
 
     it("should download everything including status, ability, item data but skip sprites when only battle-ai tab is active", async () => {
-        resetPokeapiCache();
         const mockTabs = [
             { id: "pokedex", isVisible: false },
             { id: "party-builder", isVisible: false },
@@ -165,7 +168,6 @@ describe("preloadAllData tab-aware caching", () => {
     });
 
     it("should fallback to fetch if IndexedDB cache is empty array despite version match", async () => {
-        resetPokeapiCache();
         // Simulate IndexedDB returning empty array [] for pokedex_data (버전은 일치하지만 데이터가 비어있는 상황)
         await saveToDB("pokedex_data", []);
 

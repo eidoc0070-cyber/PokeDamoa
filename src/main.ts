@@ -1,3 +1,58 @@
+// TEMP DEBUG: 오프라인 하얀 화면 버그 진단용, 원인 파악 후 제거 예정
+(function setupMainErrorHandling() {
+    const renderErrorBox = (type: string, msg: string, source?: string, lineno?: number, colno?: number, err?: any) => {
+        let container = document.getElementById("debug-error-box");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "debug-error-box";
+            container.style.cssText =
+                "position:fixed;top:0;left:0;right:0;bottom:0;z-index:999999;background:rgba(180,0,0,0.95);color:#fff;padding:20px;font-family:monospace;font-size:14px;overflow:auto;white-space:pre-wrap;word-break:break-all;";
+            const closeBtn = document.createElement("button");
+            closeBtn.innerText = "[닫기]";
+            closeBtn.style.cssText =
+                "float:right;background:#fff;color:#900;border:none;padding:8px 16px;font-weight:bold;cursor:pointer;margin-bottom:12px;border-radius:4px;";
+            closeBtn.onclick = () => container?.remove();
+            container.appendChild(closeBtn);
+            const title = document.createElement("h3");
+            title.innerText = "⚠️ [TEMP DEBUG main.ts] 감지된 에러";
+            title.style.cssText = "margin:0 0 10px 0;color:#ffcccc;";
+            container.appendChild(title);
+            const content = document.createElement("div");
+            content.id = "debug-error-content";
+            container.appendChild(content);
+            if (document.body) {
+                document.body.appendChild(container);
+            } else {
+                document.addEventListener("DOMContentLoaded", () => {
+                    if (container && document.body) {
+                        document.body.appendChild(container);
+                    }
+                });
+            }
+        }
+        const content = document.getElementById("debug-error-content");
+        if (content) {
+            const errDetail = err && err.stack ? err.stack : err || "";
+            const item = document.createElement("div");
+            item.style.cssText = "margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.3);";
+            item.innerHTML = `<strong>[${type}]</strong> ${msg || ""}<br>` +
+                `<small>Source: ${source || "N/A"}:${lineno || 0}:${colno || 0}</small><br>` +
+                `<pre style="margin-top:6px;background:rgba(0,0,0,0.3);padding:8px;border-radius:4px;">${errDetail}</pre>`;
+            content.appendChild(item);
+        }
+    };
+
+    window.addEventListener("error", (e) => {
+        renderErrorBox("MAIN_TS ERROR", e.message, e.filename, e.lineno, e.colno, e.error);
+    });
+
+    window.addEventListener("unhandledrejection", (e) => {
+        const reason = e.reason;
+        const msg = reason && reason.message ? reason.message : String(reason);
+        renderErrorBox("MAIN_TS UNHANDLED REJECTION", msg, reason && reason.fileName, reason && reason.lineNumber, 0, reason);
+    });
+})();
+
 import "./style.css";
 import { initApp } from "./app.js";
 import { getLoadedData } from "./data/pokeapi.js";
