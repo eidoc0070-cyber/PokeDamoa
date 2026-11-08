@@ -26,8 +26,9 @@ describe("Generation Logic Tests", () => {
             const gen6 = getTypeMatchupsForGen(6);
             expect(gen6.ghost.steel).toBe(1);
             expect(gen6.dark.steel).toBe(1);
-            // Gen 6 has Fairy
-            expect(gen6.fire.fairy).toBe(0.5);
+            // Gen 6 has Fairy (Fairy takes 1x from Fire, Fairy deals 0.5x to Fire)
+            expect(gen6.fire.fairy).toBe(1);
+            expect(gen6.fairy.fire).toBe(0.5);
             expect(gen6.poison.fairy).toBe(2);
         });
     });

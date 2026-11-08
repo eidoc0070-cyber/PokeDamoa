@@ -1,7 +1,7 @@
 import { renderAccordion } from "../../components/Accordion.js"; // 모듈화된 아코디언 적용
 import { createAutocomplete } from "../../components/SearchAutocomplete.js";
 import type { PokemonType, StatKey } from "../../data/constants.js";
-import { NATURES, TYPE_COLORS, TYPE_MATCHUPS, TYPE_NAMES_KO } from "../../data/constants.js";
+import { getTypeMatchupsForGen, NATURES, TYPE_COLORS, TYPE_NAMES_KO } from "../../data/constants.js";
 import type { MoveData, PokemonData } from "../../data/pokeapi.js";
 import { fetchMovesData, fetchPokedexData } from "../../data/pokeapi.js";
 import { globalStore } from "../../state/store.js";
@@ -9,6 +9,7 @@ import {
     calculateBaseDamage,
     calculateDamageRolls,
     calculateStat,
+    calculateTypeMultiplier,
     getMoveItemStyle,
     getRankMultiplier,
     getSortedMovesForPoke,
@@ -112,14 +113,8 @@ export async function renderDamageCalculator(container: HTMLElement): Promise<()
 
             if (selectedMove && defPoke) {
                 const dTypes = getTypesForGen(defPoke, targetGen);
-                typeMulti = 1.0;
-                for (const dt of dTypes) {
-                    const genMatchups = TYPE_MATCHUPS;
-                    const typeMatchup = genMatchups[selectedMove.type as PokemonType];
-                    if (typeMatchup && typeMatchup[dt as PokemonType] !== undefined) {
-                        typeMulti *= typeMatchup[dt as PokemonType]!;
-                    }
-                }
+                const genMatchups = getTypeMatchupsForGen(targetGen);
+                typeMulti = calculateTypeMultiplier(selectedMove.type, dTypes, genMatchups);
             } else {
                 typeMulti = 1.0;
             }
