@@ -12,41 +12,67 @@ const DEFAULT_MOVES_OUTPUT_FILE = path.resolve(__dirname, '../public/data/moves-
 const DEFAULT_ABILITIES_OUTPUT_FILE = path.resolve(__dirname, '../public/data/abilities-data.json');
 const DEFAULT_ITEMS_OUTPUT_FILE = path.resolve(__dirname, '../public/data/items-data.json');
 
+export function parseCSVContent(content: string) {
+  const rows: string[][] = [];
+  let cols: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i]!;
+    if (char === '"') {
+      if (inQuotes && content[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      cols.push(current);
+      current = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && content[i + 1] === '\n') i++;
+      cols.push(current);
+      if (cols.some(c => c.length > 0)) {
+        rows.push(cols);
+      }
+      cols = [];
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  if (current.length > 0 || cols.length > 0) {
+    cols.push(current);
+    if (cols.some(c => c.length > 0)) {
+      rows.push(cols);
+    }
+  }
+
+  if (rows.length === 0) return [];
+
+  const headers = rows[0]!.map(h => h.trim());
+  const results: any[] = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]!;
+    const obj: any = {};
+    headers.forEach((h, idx) => {
+      obj[h] = row[idx] !== undefined ? row[idx] : '';
+    });
+    results.push(obj);
+  }
+  return results;
+}
+
 function parseCSV(csvDir: string, filename: string) {
   const filePath = path.join(csvDir, filename);
   if (!fs.existsSync(filePath)) {
     throw new Error(`CSV 원본 파일을 찾을 수 없습니다: ${filePath} — data-source가 배포 환경에 없을 수 있습니다.`);
   }
   const content = fs.readFileSync(filePath, 'utf-8');
-  const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length === 0) return [];
-
-  const headers = lines[0]!.split(',');
-  const results: any[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const row = lines[i]!;
-    const cols: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let char of row) {
-      if (char === '"') inQuotes = !inQuotes;
-      else if (char === ',' && !inQuotes) {
-        cols.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    cols.push(current);
-
-    const obj: any = {};
-    headers.forEach((h, idx) => {
-      obj[h] = cols[idx] !== undefined ? cols[idx] : '';
-    });
-    results.push(obj);
-  }
-  return results;
+  return parseCSVContent(content);
 }
 
 function formatIdentifier(id: string) {
@@ -337,10 +363,27 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
         });
     });
 
+    const buildEffectMap = (list: any[], idField: string) => {
+        const map = new Map<number, string>();
+        // 영어('9')를 기본 fallback으로 먼저 채우고, 한국어('3')가 있으면 덮어씀
+        list.forEach(item => {
+            if (item.local_language_id === '9') {
+                const text = item.short_effect || item.effect;
+                if (text) map.set(parseInt(item[idField]), text);
+            }
+        });
+        list.forEach(item => {
+            if (item.local_language_id === '3') {
+                const text = item.short_effect || item.effect;
+                if (text) map.set(parseInt(item[idField]), text);
+            }
+        });
+        return map;
+    };
+
     const moveNameMap = new Map<number, string>();
     moveNamesList.forEach(mn => { if (mn.local_language_id === '3') moveNameMap.set(parseInt(mn.move_id), mn.name); });
-    const moveEffectMap = new Map<number, string>();
-    moveEffectProseList.forEach(mep => { if (mep.local_language_id === '3') moveEffectMap.set(parseInt(mep.move_effect_id), mep.short_effect || mep.effect); });
+    const moveEffectMap = buildEffectMap(moveEffectProseList, 'move_effect_id');
 
     // 상세 설명 (Flavor Text) 매핑 - 가장 최신 버전 그룹 선호
     const getLatestFlavorText = (list: any[], idField: string) => {
@@ -435,8 +478,7 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
 
     const abilityNameMap = new Map<number, string>();
     abilityNamesList.forEach(an => { if (an.local_language_id === '3') abilityNameMap.set(parseInt(an.ability_id), an.name); });
-    const abilityEffectMap = new Map<number, string>();
-    abilityProseList.forEach(ap => { if (ap.local_language_id === '3') abilityEffectMap.set(parseInt(ap.ability_id), ap.short_effect || ap.effect); });
+    const abilityEffectMap = buildEffectMap(abilityProseList, 'ability_id');
     const finalAbilities: any[] = [];
     abilitiesList.forEach(a => {
       const id = parseInt(a.id);
@@ -456,8 +498,7 @@ export function processData(csvDir: string = DEFAULT_CSV_DIR, outputPokedex: str
 
     const itemNameMap = new Map<number, string>();
     itemNamesList.forEach(inm => { if (inm.local_language_id === '3') itemNameMap.set(parseInt(inm.item_id), inm.name); });
-    const itemEffectMap = new Map<number, string>();
-    itemProseList.forEach(ip => { if (ip.local_language_id === '3') itemEffectMap.set(parseInt(ip.item_id), ip.short_effect || ip.effect); });
+    const itemEffectMap = buildEffectMap(itemProseList, 'item_id');
     const finalItems: any[] = [];
     itemsList.forEach(item => {
       const id = parseInt(item.id);
